@@ -265,6 +265,45 @@ function Dashboard() {
           : completedTripDays >= totalTripDays
             ? 100
             : Math.round((completedTripDays / totalTripDays) * 100);
+
+  const expenseCompletedDays = route
+    .filter((item) => {
+      if (!item.date) return false;
+
+      const rideDate = new Date(`${item.date}T00:00:00`);
+
+      return rideDate < today;
+    })
+    .reduce((days, item) => {
+      days.add(item.day);
+      return days;
+    }, new Set<string>()).size;
+
+  const averageDailySpend =
+    expenseCompletedDays > 0 ? total / expenseCompletedDays : 0;
+
+  const projectedTripSpend =
+    expenseCompletedDays > 0 && totalTripDays > 0
+      ? averageDailySpend * totalTripDays
+      : 0;
+
+  const spendingPace =
+    !budget || projectedTripSpend === 0
+      ? "unset"
+      : projectedTripSpend > budget
+        ? "risk"
+        : projectedTripSpend >= budget * 0.85
+          ? "warning"
+          : "healthy";
+
+  const spendingPaceLabel =
+    spendingPace === "unset"
+      ? "PACE UNAVAILABLE"
+      : spendingPace === "risk"
+        ? "PACE: OVER BUDGET"
+        : spendingPace === "warning"
+          ? "PACE: TIGHT"
+          : "PACE: HEALTHY";
   return (
     <div className="dashboard-page">
       <style jsx global>{`
@@ -1520,11 +1559,66 @@ function Dashboard() {
               <div className={`budget-message ${budgetStatus}`}>
                 {budgetStatusText}
               </div>
+              {expenseCompletedDays > 0 && budget > 0 && (
+                <div className="dashboard-spending-intelligence">
+                  <div className="dashboard-spending-intelligence-top">
+                    <span>SPENDING PACE</span>
+
+                    <strong className={spendingPace}>
+                      {spendingPaceLabel}
+                    </strong>
+                  </div>
+
+                  <div className="dashboard-spending-intelligence-grid">
+                    <div>
+                      <span>AVG / RIDE DAY</span>
+                      <b>
+                        ₹{Math.round(averageDailySpend).toLocaleString("en-IN")}
+                      </b>
+                    </div>
+
+                    <div>
+                      <span>PROJECTED TOTAL</span>
+                      <b>
+                        ₹
+                        {Math.round(projectedTripSpend).toLocaleString("en-IN")}
+                      </b>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <div className="budget-message unset">
               {budgetStatusText}
+              {expenseCompletedDays > 0 && budget > 0 && (
+                <div className="dashboard-spending-intelligence">
+                  <div className="dashboard-spending-intelligence-top">
+                    <span>SPENDING PACE</span>
 
+                    <strong className={spendingPace}>
+                      {spendingPaceLabel}
+                    </strong>
+                  </div>
+
+                  <div className="dashboard-spending-intelligence-grid">
+                    <div>
+                      <span>AVG / RIDE DAY</span>
+                      <b>
+                        ₹{Math.round(averageDailySpend).toLocaleString("en-IN")}
+                      </b>
+                    </div>
+
+                    <div>
+                      <span>PROJECTED TOTAL</span>
+                      <b>
+                        ₹
+                        {Math.round(projectedTripSpend).toLocaleString("en-IN")}
+                      </b>
+                    </div>
+                  </div>
+                </div>
+              )}
               <Link href="/ride-prep">Set budget →</Link>
             </div>
           )}

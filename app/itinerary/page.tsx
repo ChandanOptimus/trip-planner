@@ -966,7 +966,7 @@ function Itinerary() {
             className={view === "map" ? "active" : ""}
             onClick={() => setView("map")}
           >
-            Google Maps
+            Map
           </button>
         </div>
         <button
