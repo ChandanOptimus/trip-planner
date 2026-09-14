@@ -15,22 +15,19 @@ function RidePrep() {
     body: "",
   });
 
-  const [settings, setSettings] =
-    useState<Record<string, string> | null>(null);
+  const [settings, setSettings] = useState<Record<string, string> | null>(null);
 
   if (!data) return null;
 
   const trip = settings ?? data.trip;
 
   const completed = data.ridePrep.filter(
-    (item) => item.checked === "true"
+    (item) => item.checked === "true",
   ).length;
 
   const totalTasks = data.ridePrep.length;
 
-  const prepPct = totalTasks
-    ? Math.round((completed / totalTasks) * 100)
-    : 0;
+  const prepPct = totalTasks ? Math.round((completed / totalTasks) * 100) : 0;
 
   const remainingTasks = totalTasks - completed;
 
@@ -65,18 +62,10 @@ function RidePrep() {
     }
   };
 
-  const editPrep = (
-    item: typeof data.ridePrep[number]
-  ) => {
-    const nextLabel = window.prompt(
-      "Task",
-      item.label
-    );
+  const editPrep = (item: (typeof data.ridePrep)[number]) => {
+    const nextLabel = window.prompt("Task", item.label);
 
-    const nextCategory = window.prompt(
-      "Category",
-      item.category
-    );
+    const nextCategory = window.prompt("Category", item.category);
 
     if (nextLabel && nextCategory) {
       void save("ridePrep", "PATCH", {
@@ -87,18 +76,10 @@ function RidePrep() {
     }
   };
 
-  const editNote = (
-    item: typeof data.notes[number]
-  ) => {
-    const title = window.prompt(
-      "Title",
-      item.title
-    );
+  const editNote = (item: (typeof data.notes)[number]) => {
+    const title = window.prompt("Title", item.title);
 
-    const body = window.prompt(
-      "Note",
-      item.body
-    );
+    const body = window.prompt("Note", item.body);
 
     if (title && body) {
       void save("notes", "PATCH", {
@@ -113,17 +94,15 @@ function RidePrep() {
     <div className="ride-prep-page">
       <section className="prep-hero">
         <div className="prep-hero-copy">
-          <p className="eyebrow">
-            PRE-DEPARTURE CONTROL
-          </p>
+          <p className="eyebrow">PRE-DEPARTURE CONTROL</p>
 
           <h1>
             Ready when the <em>road calls.</em>
           </h1>
 
           <p className="lead">
-            Check the machine, sort the essentials and leave
-            nothing important behind.
+            Check the machine, sort the essentials and leave nothing important
+            behind.
           </p>
         </div>
 
@@ -143,9 +122,7 @@ function RidePrep() {
           </div>
 
           <div className="prep-status-copy">
-            <span className="eyebrow">
-              RIDE STATUS
-            </span>
+            <span className="eyebrow">RIDE STATUS</span>
 
             <strong>
               {completed}
@@ -156,9 +133,7 @@ function RidePrep() {
               {remainingTasks === 0
                 ? "Everything is checked."
                 : `${remainingTasks} ${
-                    remainingTasks === 1
-                      ? "task"
-                      : "tasks"
+                    remainingTasks === 1 ? "task" : "tasks"
                   } remaining`}
             </span>
           </div>
@@ -171,29 +146,19 @@ function RidePrep() {
           <strong>
             {completed}/{totalTasks}
           </strong>
-          <small>
-            {prepPct}% complete
-          </small>
+          <small>{prepPct}% complete</small>
         </article>
 
         <article>
           <span>TRIP NOTES</span>
           <strong>{data.notes.length}</strong>
-          <small>
-            Things worth remembering
-          </small>
+          <small>Things worth remembering</small>
         </article>
 
         <article>
           <span>EMERGENCY</span>
-          <strong>
-            {trip.emergencyPhone
-              ? "SET"
-              : "NOT SET"}
-          </strong>
-          <small>
-            Emergency contact
-          </small>
+          <strong>{trip.emergencyPhone ? "SET" : "NOT SET"}</strong>
+          <small>Emergency contact</small>
         </article>
       </section>
 
@@ -202,13 +167,9 @@ function RidePrep() {
           <article className="prep-checklist-card">
             <div className="prep-section-heading">
               <div>
-                <p className="eyebrow">
-                  BEFORE YOU RIDE
-                </p>
+                <p className="eyebrow">BEFORE YOU RIDE</p>
 
-                <h2>
-                  The pre-ride checklist
-                </h2>
+                <h2>The pre-ride checklist</h2>
               </div>
 
               <span className="prep-count">
@@ -220,44 +181,28 @@ function RidePrep() {
               <div className="prep-empty">
                 <span>✓</span>
 
-                <strong>
-                  Nothing on the checklist yet
-                </strong>
+                <strong>Nothing on the checklist yet</strong>
 
-                <p>
-                  Add your first safety or bike-prep
-                  task below.
-                </p>
+                <p>Add your first safety or bike-prep task below.</p>
               </div>
             ) : (
               <div className="prep-check-list">
                 {data.ridePrep.map((item) => {
-                  const checked =
-                    item.checked === "true";
+                  const checked = item.checked === "true";
 
                   return (
                     <label
                       key={item.id}
-                      className={
-                        checked
-                          ? "prep-item checked"
-                          : "prep-item"
-                      }
+                      className={checked ? "prep-item checked" : "prep-item"}
                     >
                       <input
                         type="checkbox"
                         checked={checked}
                         onChange={() =>
-                          save(
-                            "ridePrep",
-                            "PATCH",
-                            {
-                              ...item,
-                              checked: checked
-                                ? "false"
-                                : "true",
-                            }
-                          )
+                          save("ridePrep", "PATCH", {
+                            ...item,
+                            checked: checked ? "false" : "true",
+                          })
                         }
                       />
 
@@ -266,22 +211,13 @@ function RidePrep() {
                       </span>
 
                       <span className="prep-item-copy">
-                        <strong>
-                          {item.label}
-                        </strong>
+                        <strong>{item.label}</strong>
 
-                        <i>
-                          {item.category}
-                        </i>
+                        <i>{item.category}</i>
                       </span>
 
                       <span className="prep-item-actions">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            editPrep(item)
-                          }
-                        >
+                        <button type="button" onClick={() => editPrep(item)}>
                           Edit
                         </button>
 
@@ -289,13 +225,9 @@ function RidePrep() {
                           type="button"
                           className="danger"
                           onClick={() =>
-                            save(
-                              "ridePrep",
-                              "DELETE",
-                              {
-                                id: item.id,
-                              }
-                            )
+                            save("ridePrep", "DELETE", {
+                              id: item.id,
+                            })
                           }
                         >
                           ×
@@ -307,31 +239,21 @@ function RidePrep() {
               </div>
             )}
 
-            <form
-              onSubmit={addPrep}
-              className="prep-add-form"
-            >
+            <form onSubmit={addPrep} className="prep-add-form">
               <input
                 required
                 placeholder="Add safety task"
                 value={label}
-                onChange={(e) =>
-                  setLabel(e.target.value)
-                }
+                onChange={(e) => setLabel(e.target.value)}
               />
 
               <input
                 value={category}
-                onChange={(e) =>
-                  setCategory(e.target.value)
-                }
+                onChange={(e) => setCategory(e.target.value)}
                 placeholder="Safety"
               />
 
-              <button
-                className="button"
-                type="submit"
-              >
+              <button className="button" type="submit">
                 Add task <span>→</span>
               </button>
             </form>
@@ -340,61 +262,39 @@ function RidePrep() {
           <article className="notes-card">
             <div className="prep-section-heading">
               <div>
-                <p className="eyebrow">
-                  ROAD NOTES
-                </p>
+                <p className="eyebrow">ROAD NOTES</p>
 
-                <h2>
-                  Things worth remembering.
-                </h2>
+                <h2>Things worth remembering.</h2>
               </div>
 
-              <span className="prep-count">
-                {data.notes.length}
-              </span>
+              <span className="prep-count">{data.notes.length}</span>
             </div>
 
             {data.notes.length === 0 ? (
               <div className="notes-empty">
                 <span>✦</span>
 
-                <strong>
-                  No trip notes yet
-                </strong>
+                <strong>No trip notes yet</strong>
 
                 <p>
-                  Add reminders, route ideas or
-                  anything you don't want to forget.
+                  Add reminders, route ideas or anything you don't want to
+                  forget.
                 </p>
               </div>
             ) : (
               <div className="notes-list">
                 {data.notes.map((item) => (
-                  <article
-                    key={item.id}
-                    className="note-item"
-                  >
-                    <div className="note-mark">
-                      ✦
-                    </div>
+                  <article key={item.id} className="note-item">
+                    <div className="note-mark">✦</div>
 
                     <div className="note-copy">
-                      <strong>
-                        {item.title}
-                      </strong>
+                      <strong>{item.title}</strong>
 
-                      <p>
-                        {item.body}
-                      </p>
+                      <p>{item.body}</p>
                     </div>
 
                     <div className="note-actions">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          editNote(item)
-                        }
-                      >
+                      <button type="button" onClick={() => editNote(item)}>
                         Edit
                       </button>
 
@@ -402,13 +302,9 @@ function RidePrep() {
                         type="button"
                         className="danger"
                         onClick={() =>
-                          save(
-                            "notes",
-                            "DELETE",
-                            {
-                              id: item.id,
-                            }
-                          )
+                          save("notes", "DELETE", {
+                            id: item.id,
+                          })
                         }
                       >
                         Delete
@@ -419,10 +315,7 @@ function RidePrep() {
               </div>
             )}
 
-            <form
-              onSubmit={addNote}
-              className="note-form"
-            >
+            <form onSubmit={addNote} className="note-form">
               <label>
                 Title
                 <input
@@ -453,10 +346,7 @@ function RidePrep() {
                 />
               </label>
 
-              <button
-                className="button"
-                type="submit"
-              >
+              <button className="button" type="submit">
                 Add road note <span>→</span>
               </button>
             </form>
@@ -464,48 +354,34 @@ function RidePrep() {
         </section>
 
         <aside className="prep-settings-card">
-          <p className="eyebrow">
-            TRIP SETTINGS
-          </p>
+          <p className="eyebrow">TRIP SETTINGS</p>
 
-          <h2>
-            Know before you go.
-          </h2>
+          <h2>Know before you go.</h2>
 
           <p className="settings-copy">
-            Keep the important trip details close,
-            especially when you're already on the road.
+            Keep the important trip details close, especially when you're
+            already on the road.
           </p>
 
           <form
             className="data-form"
-            onSubmit={async (e) => {
-              e.preventDefault();
+           onSubmit={async (e) => {
+  e.preventDefault();
 
-              if (
-                await save(
-                  "trip",
-                  "POST",
-                  trip
-                )
-              ) {
-                setSettings(null);
-              }
-            }}
+  if (await save("trip", "POST", trip)) {
+    setSettings(null);
+  }
+}}
           >
-            <label>
+            <label className="date-field">
               Trip start
-
               <input
                 type="date"
-                value={
-                  trip.startDate || ""
-                }
+                value={trip.startDate || ""}
                 onChange={(e) =>
                   setSettings({
                     ...trip,
-                    startDate:
-                      e.target.value,
+                    startDate: e.target.value,
                   })
                 }
               />
@@ -513,17 +389,13 @@ function RidePrep() {
 
             <label>
               Total budget (₹)
-
               <input
                 inputMode="decimal"
-                value={
-                  trip.totalBudget || ""
-                }
+                value={trip.totalBudget || ""}
                 onChange={(e) =>
                   setSettings({
                     ...trip,
-                    totalBudget:
-                      e.target.value,
+                    totalBudget: e.target.value,
                   })
                 }
               />
@@ -532,34 +404,23 @@ function RidePrep() {
             <div className="settings-divider" />
 
             <div className="emergency-heading">
-              <span className="emergency-icon">
-                !
-              </span>
+              <span className="emergency-icon">!</span>
 
               <div>
-                <span className="eyebrow">
-                  EMERGENCY CONTACT
-                </span>
+                <span className="eyebrow">EMERGENCY CONTACT</span>
 
-                <small>
-                  Keep someone reachable.
-                </small>
+                <small>Keep someone reachable.</small>
               </div>
             </div>
 
             <label>
               Contact name
-
               <input
-                value={
-                  trip.emergencyContact ||
-                  ""
-                }
+                value={trip.emergencyContact || ""}
                 onChange={(e) =>
                   setSettings({
                     ...trip,
-                    emergencyContact:
-                      e.target.value,
+                    emergencyContact: e.target.value,
                   })
                 }
                 placeholder="Name"
@@ -568,29 +429,21 @@ function RidePrep() {
 
             <label>
               Emergency phone
-
               <input
                 type="tel"
-                value={
-                  trip.emergencyPhone || ""
-                }
+                value={trip.emergencyPhone || ""}
                 onChange={(e) =>
                   setSettings({
                     ...trip,
-                    emergencyPhone:
-                      e.target.value,
+                    emergencyPhone: e.target.value,
                   })
                 }
                 placeholder="+91..."
               />
             </label>
 
-            <button
-              className="button"
-              type="submit"
-            >
-              Save trip settings{" "}
-              <span>→</span>
+            <button className="button" type="submit">
+              Save trip settings <span>→</span>
             </button>
           </form>
         </aside>
@@ -613,8 +466,7 @@ function RidePrep() {
           min-height: 270px;
           padding: 42px;
           margin-bottom: 18px;
-          border: 1px solid
-            var(--rb-line, rgba(255, 255, 255, 0.09));
+          border: 1px solid var(--rb-line, rgba(255, 255, 255, 0.09));
           border-radius: 24px;
           background:
             radial-gradient(
@@ -632,14 +484,11 @@ function RidePrep() {
           height: 350px;
           right: -110px;
           bottom: -215px;
-          border: 1px solid
-            rgba(255, 255, 255, 0.055);
+          border: 1px solid rgba(255, 255, 255, 0.055);
           border-radius: 50%;
           box-shadow:
-            0 0 0 34px
-              rgba(255, 255, 255, 0.018),
-            0 0 0 68px
-              rgba(255, 255, 255, 0.012);
+            0 0 0 34px rgba(255, 255, 255, 0.018),
+            0 0 0 68px rgba(255, 255, 255, 0.012);
           pointer-events: none;
         }
 
@@ -687,12 +536,10 @@ function RidePrep() {
           height: 112px;
           flex: 0 0 112px;
           border-radius: 50%;
-          background:
-            conic-gradient(
-              var(--rb-accent, #ff6a1a)
-                var(--progress),
-              rgba(255, 255, 255, 0.08) 0deg
-            );
+          background: conic-gradient(
+            var(--rb-accent, #ff6a1a) var(--progress),
+            rgba(255, 255, 255, 0.08) 0deg
+          );
         }
 
         .prep-ring::before {
@@ -752,8 +599,7 @@ function RidePrep() {
           grid-template-columns: repeat(3, 1fr);
           margin-bottom: 18px;
           overflow: hidden;
-          border: 1px solid
-            var(--rb-line, rgba(255, 255, 255, 0.09));
+          border: 1px solid var(--rb-line, rgba(255, 255, 255, 0.09));
           border-radius: 18px;
           background: var(--rb-panel, #101316);
         }
@@ -761,8 +607,7 @@ function RidePrep() {
         .prep-stats article {
           min-height: 105px;
           padding: 22px 26px;
-          border-right: 1px solid
-            rgba(255, 255, 255, 0.07);
+          border-right: 1px solid rgba(255, 255, 255, 0.07);
         }
 
         .prep-stats article:last-child {
@@ -808,8 +653,7 @@ function RidePrep() {
         .prep-checklist-card,
         .notes-card,
         .prep-settings-card {
-          border: 1px solid
-            var(--rb-line, rgba(255, 255, 255, 0.09));
+          border: 1px solid var(--rb-line, rgba(255, 255, 255, 0.09));
           border-radius: 20px;
           background: var(--rb-panel, #101316);
         }
@@ -825,8 +669,7 @@ function RidePrep() {
           justify-content: space-between;
           gap: 20px;
           padding: 28px 30px 22px;
-          border-bottom: 1px solid
-            rgba(255, 255, 255, 0.07);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.07);
         }
 
         .prep-section-heading h2 {
@@ -841,8 +684,7 @@ function RidePrep() {
           min-width: 40px;
           height: 30px;
           padding: 0 9px;
-          border: 1px solid
-            rgba(255, 106, 26, 0.3);
+          border: 1px solid rgba(255, 106, 26, 0.3);
           border-radius: 999px;
           background: rgba(255, 106, 26, 0.08);
           color: var(--rb-accent, #ff6a1a);
@@ -862,8 +704,7 @@ function RidePrep() {
           gap: 15px;
           min-height: 70px;
           padding: 12px 20px 12px 26px;
-          border-bottom: 1px solid
-            rgba(255, 255, 255, 0.055);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.055);
           cursor: pointer;
           transition: background 0.18s ease;
         }
@@ -888,8 +729,7 @@ function RidePrep() {
           width: 22px;
           height: 22px;
           flex: 0 0 22px;
-          border: 1px solid
-            rgba(255, 255, 255, 0.25);
+          border: 1px solid rgba(255, 255, 255, 0.25);
           border-radius: 6px;
           background: #0b0e10;
           color: #fff;
@@ -919,8 +759,7 @@ function RidePrep() {
           white-space: nowrap;
         }
 
-        .prep-item.checked
-          .prep-item-copy strong {
+        .prep-item.checked .prep-item-copy strong {
           color: #737b82;
           text-decoration: line-through;
         }
@@ -942,8 +781,7 @@ function RidePrep() {
           transition: opacity 0.18s ease;
         }
 
-        .prep-item:hover
-          .prep-item-actions {
+        .prep-item:hover .prep-item-actions {
           opacity: 1;
         }
 
@@ -980,16 +818,14 @@ function RidePrep() {
           grid-template-columns: minmax(0, 1fr) 150px auto;
           gap: 9px;
           padding: 18px 20px;
-          border-top: 1px solid
-            rgba(255, 255, 255, 0.07);
+          border-top: 1px solid rgba(255, 255, 255, 0.07);
           background: rgba(255, 255, 255, 0.015);
         }
 
         .prep-add-form input {
           width: 100%;
           box-sizing: border-box;
-          border: 1px solid
-            rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 9px;
           outline: none;
           background: #0b0e10;
@@ -1022,8 +858,7 @@ function RidePrep() {
           gap: 13px;
           align-items: start;
           padding: 20px 24px;
-          border-bottom: 1px solid
-            rgba(255, 255, 255, 0.055);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.055);
         }
 
         .note-mark {
@@ -1031,8 +866,7 @@ function RidePrep() {
           place-items: center;
           width: 30px;
           height: 30px;
-          border: 1px solid
-            rgba(255, 106, 26, 0.25);
+          border: 1px solid rgba(255, 106, 26, 0.25);
           border-radius: 8px;
           background: rgba(255, 106, 26, 0.07);
           color: var(--rb-accent, #ff6a1a);
@@ -1085,8 +919,7 @@ function RidePrep() {
           width: 100%;
           box-sizing: border-box;
           margin-top: 7px;
-          border: 1px solid
-            rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 10px;
           outline: none;
           background: #0b0e10;
@@ -1105,8 +938,7 @@ function RidePrep() {
         .note-form textarea:focus,
         .prep-settings-card input:focus {
           border-color: rgba(255, 106, 26, 0.6);
-          box-shadow: 0 0 0 3px
-            rgba(255, 106, 26, 0.07);
+          box-shadow: 0 0 0 3px rgba(255, 106, 26, 0.07);
         }
 
         .note-form .button {
@@ -1132,8 +964,7 @@ function RidePrep() {
           width: 46px;
           height: 46px;
           margin-bottom: 14px;
-          border: 1px solid
-            rgba(255, 106, 26, 0.25);
+          border: 1px solid rgba(255, 106, 26, 0.25);
           border-radius: 50%;
           background: rgba(255, 106, 26, 0.08);
           color: var(--rb-accent, #ff6a1a);
@@ -1203,8 +1034,7 @@ function RidePrep() {
           place-items: center;
           width: 30px;
           height: 30px;
-          border: 1px solid
-            rgba(239, 68, 68, 0.25);
+          border: 1px solid rgba(239, 68, 68, 0.25);
           border-radius: 8px;
           background: rgba(239, 68, 68, 0.08);
           color: #ef4444;
@@ -1258,8 +1088,7 @@ function RidePrep() {
           .prep-stats article {
             min-height: auto;
             border-right: 0;
-            border-bottom: 1px solid
-              rgba(255, 255, 255, 0.07);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
           }
 
           .prep-stats article:last-child {
@@ -1331,6 +1160,17 @@ function RidePrep() {
           .prep-settings-card {
             padding: 22px;
           }
+        }
+        .date-field input[type="date"] {
+          position: relative;
+          cursor: pointer;
+          color-scheme: dark;
+        }
+
+        .date-field input[type="date"]::-webkit-calendar-picker-indicator {
+          opacity: 1;
+          cursor: pointer;
+          padding: 4px;
         }
       `}</style>
     </div>

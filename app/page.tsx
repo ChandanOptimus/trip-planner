@@ -13,43 +13,258 @@ function Dashboard() {
     ? new Date(`${data.trip.startDate}T00:00:00`)
     : null;
 
-  const days = start
-    ? Math.max(
-        0,
-        Math.ceil(
-          (start.getTime() - new Date().setHours(0, 0, 0, 0)) / 86400000,
-        ),
-      )
-    : "—";
+  const route = [...data.itinerary].sort(
+    (a, b) => Number(a.sortOrder || a.day) - Number(b.sortOrder || b.day),
+  );
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   const total = data.expenses.reduce(
     (sum, item) => sum + Number(item.amount || 0),
     0,
   );
 
-  const packed = data.packing.filter(
-    (item) => item.packed === "true",
-  ).length;
+  const packed = data.packing.filter((item) => item.packed === "true").length;
 
-  const route = [...data.itinerary].sort(
-    (a, b) =>
-      Number(a.sortOrder || a.day) - Number(b.sortOrder || b.day),
+  const totalDistance = data.itinerary.reduce(
+    (sum, item) => sum + Number(item.distanceKm || 0),
+    0,
   );
 
-  const next = route[0];
-
   const budget = Number(data.trip.totalBudget || 0);
+
+  const remaining = budget - total;
 
   const budgetPct = budget
     ? Math.min(100, Math.round((total / budget) * 100))
     : 0;
+  const budgetStatus = !budget
+    ? "unset"
+    : remaining < 0
+      ? "over"
+      : budgetPct >= 85
+        ? "warning"
+        : "healthy";
 
+  const budgetStatusLabel =
+    budgetStatus === "unset"
+      ? "BUDGET NOT SET"
+      : budgetStatus === "over"
+        ? "OVER BUDGET"
+        : budgetStatus === "warning"
+          ? "NEAR LIMIT"
+          : "ON TRACK";
+
+  const budgetStatusText =
+    budgetStatus === "unset"
+      ? "Set a trip budget to keep your spending under control."
+      : budgetStatus === "over"
+        ? `You're ₹${Math.abs(remaining).toLocaleString(
+            "en-IN",
+          )} over your planned budget.`
+        : budgetStatus === "warning"
+          ? `Only ₹${remaining.toLocaleString(
+              "en-IN",
+            )} remains in your trip budget.`
+          : `₹${remaining.toLocaleString("en-IN")} remains for the trip.`;
   const packingPct = data.packing.length
     ? Math.round((packed / data.packing.length) * 100)
     : 0;
+  const packingRemaining = data.packing.length - packed;
 
-  const remaining = Math.max(0, budget - total);
+  const prepTotal = data.ridePrep.length;
 
+  const prepDone = data.ridePrep.filter(
+    (item) => item.checked === "true",
+  ).length;
+
+  const prepPct = prepTotal ? Math.round((prepDone / prepTotal) * 100) : 0;
+
+  const prepRemaining = prepTotal - prepDone;
+
+  const hasRoute = data.itinerary.length > 0;
+
+  const hasStops = data.stops.length > 0;
+
+  const hasBudget = budget > 0;
+
+  const readinessChecks = [
+    {
+      label: "Route planned",
+      done: hasRoute,
+    },
+    {
+      label: "Trip date set",
+      done: Boolean(data.trip.startDate),
+    },
+    {
+      label: "Budget set",
+      done: hasBudget,
+    },
+    {
+      label: "Packing",
+      done: data.packing.length > 0 && packingRemaining === 0,
+    },
+    {
+      label: "Ride prep",
+      done: prepTotal > 0 && prepRemaining === 0,
+    },
+  ];
+
+  const readinessDone = readinessChecks.filter((item) => item.done).length;
+
+  const readinessPct = Math.round(
+    (readinessDone / readinessChecks.length) * 100,
+  );
+  let attentionTitle = "Everything looks good.";
+  let attentionText = "Your roadbook is in good shape.";
+  let attentionHref = "/itinerary";
+  let attentionAction = "Review itinerary";
+
+  if (!data.trip.startDate) {
+    attentionTitle = "Set your departure date.";
+    attentionText = "Your countdown can't start until the trip date is set.";
+    attentionHref = "/ride-prep";
+    attentionAction = "Set trip date";
+  } else if (!hasRoute) {
+    attentionTitle = "Plan your route.";
+    attentionText = "Add your first ride day to start building the roadbook.";
+    attentionHref = "/itinerary";
+    attentionAction = "Plan itinerary";
+  } else if (packingRemaining > 0) {
+    attentionTitle = `${packingRemaining} ${packingRemaining === 1 ? "item" : "items"} still to pack.`;
+    attentionText = "Get the essentials sorted before you hit the road.";
+    attentionHref = "/packing";
+    attentionAction = "Open packing";
+  } else if (prepRemaining > 0) {
+    attentionTitle = `${prepRemaining} ride prep ${prepRemaining === 1 ? "task" : "tasks"} remaining.`;
+    attentionText =
+      "Finish your safety and motorcycle checks before departure.";
+    attentionHref = "/ride-prep";
+    attentionAction = "Finish ride prep";
+  } else if (!hasBudget) {
+    attentionTitle = "Set your trip budget.";
+    attentionText = "A budget makes the expense tracker much more useful.";
+    attentionHref = "/ride-prep";
+    attentionAction = "Set budget";
+  } else if (budget > 0 && remaining < 0) {
+    attentionTitle = "You're over budget.";
+    attentionText = `You've spent ₹${Math.abs(remaining).toLocaleString("en-IN")} more than planned.`;
+    attentionHref = "/expenses";
+    attentionAction = "Review expenses";
+  } else if (!hasStops) {
+    attentionTitle = "Add a few road stops.";
+    attentionText =
+      "Fuel, food and sightseeing stops will make the route more useful.";
+    attentionHref = "/itinerary";
+    attentionAction = "Add stops";
+  }
+  const startDate = data.trip.startDate
+    ? new Date(`${data.trip.startDate}T00:00:00`)
+    : null;
+
+  const daysToDeparture = startDate
+    ? Math.ceil((startDate.getTime() - today.getTime()) / 86400000)
+    : null;
+
+  /*
+   * Find the first ride day that is today or still upcoming.
+   * If the entire trip is already in the past, fall back
+   * to the final planned ride day.
+   */
+  const upcomingRoute =
+    route.find((item) => {
+      if (!item.date) return false;
+
+      const rideDate = new Date(`${item.date}T00:00:00`);
+
+      return rideDate >= today;
+    }) ?? route[route.length - 1];
+
+  const nextDayItems = upcomingRoute
+    ? route.filter((item) => item.day === upcomingRoute.day)
+    : [];
+
+  const nextRouteStart = nextDayItems[0]?.from ?? upcomingRoute?.from ?? "";
+
+  const nextRouteEnd =
+    nextDayItems[nextDayItems.length - 1]?.to ?? upcomingRoute?.to ?? "";
+
+  const nextStops = upcomingRoute
+    ? data.stops.filter((stop) => stop.day === upcomingRoute.day)
+    : [];
+  const nextDayDistance = nextDayItems.reduce(
+    (sum, item) => sum + Number(item.distanceKm || 0),
+    0,
+  );
+
+  const nextDayRideTypes = [
+    ...new Set(nextDayItems.map((item) => item.rideType).filter(Boolean)),
+  ];
+
+  const nextDayNotes = nextDayItems.map((item) => item.notes).filter(Boolean);
+
+  const nextDayStopCount = nextStops.length;
+  const nextRideDate = upcomingRoute?.date
+    ? new Date(`${upcomingRoute.date}T00:00:00`)
+    : null;
+
+  const nextRideIsToday = nextRideDate?.getTime() === today.getTime();
+
+  const tripHasStarted =
+    startDate !== null && startDate.getTime() <= today.getTime();
+  const stopCounts = data.stops.reduce<Record<string, number>>((all, stop) => {
+    all[stop.type] = (all[stop.type] || 0) + 1;
+    return all;
+  }, {});
+  const tripDays = Array.from(
+    new Set(route.filter((item) => item.day).map((item) => item.day)),
+  );
+
+  const totalTripDays = tripDays.length;
+
+  const completedTripDays =
+    route.filter((item) => {
+      if (!item.date) return false;
+
+      const rideDate = new Date(`${item.date}T00:00:00`);
+
+      return rideDate < today;
+    }).length > 0
+      ? new Set(
+          route
+            .filter((item) => {
+              if (!item.date) return false;
+
+              const rideDate = new Date(`${item.date}T00:00:00`);
+
+              return rideDate < today;
+            })
+            .map((item) => item.day),
+        ).size
+      : 0;
+
+  const completedDistance = route.reduce((sum, item) => {
+    if (!item.date) return sum;
+
+    const rideDate = new Date(`${item.date}T00:00:00`);
+
+    return rideDate < today ? sum + Number(item.distanceKm || 0) : sum;
+  }, 0);
+
+  const remainingDistance = Math.max(0, totalDistance - completedDistance);
+
+  const tripProgressPct =
+    totalTripDays === 0
+      ? 0
+      : !startDate
+        ? 0
+        : today < startDate
+          ? 0
+          : completedTripDays >= totalTripDays
+            ? 100
+            : Math.round((completedTripDays / totalTripDays) * 100);
   return (
     <div className="dashboard-page">
       <style jsx global>{`
@@ -529,11 +744,7 @@ function Dashboard() {
           padding: 22px;
           overflow: hidden;
           background:
-            linear-gradient(
-              145deg,
-              rgba(255, 106, 26, 0.1),
-              transparent 60%
-            ),
+            linear-gradient(145deg, rgba(255, 106, 26, 0.1), transparent 60%),
             var(--rb-panel);
           border: 1px solid var(--rb-line);
           border-radius: 16px;
@@ -667,6 +878,285 @@ function Dashboard() {
             font-size: 18px;
           }
         }
+        .dashboard-stop-summary {
+          margin-top: 22px;
+          padding-top: 18px;
+          border-top: 1px solid rgba(255, 255, 255, 0.07);
+        }
+
+        .dashboard-stop-heading {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .dashboard-stop-heading > span:last-child {
+          display: grid;
+          place-items: center;
+          min-width: 28px;
+          height: 24px;
+          padding: 0 7px;
+          border: 1px solid rgba(255, 106, 26, 0.25);
+          border-radius: 999px;
+          background: rgba(255, 106, 26, 0.07);
+          color: var(--rb-accent, #ff6a1a);
+          font-size: 10px;
+          font-weight: 800;
+        }
+
+        .dashboard-stop-list {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          margin-top: 13px;
+        }
+
+        .dashboard-stop {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .dashboard-stop-dot {
+          width: 8px;
+          height: 8px;
+          flex: 0 0 8px;
+          border-radius: 50%;
+          background: #38bdf8;
+          box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+        }
+
+        .dashboard-stop-dot.fuel {
+          background: #facc15;
+          box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.1);
+        }
+
+        .dashboard-stop-dot.food {
+          background: #fb923c;
+          box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.1);
+        }
+
+        .dashboard-stop-dot.sightseeing {
+          background: #38bdf8;
+          box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+        }
+
+        .dashboard-stop-dot.stay {
+          background: #c084fc;
+          box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.1);
+        }
+
+        .dashboard-stop div {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          min-width: 0;
+        }
+
+        .dashboard-stop strong {
+          overflow: hidden;
+          color: #dfe3e5;
+          font-size: 11px;
+          font-weight: 650;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .dashboard-stop small {
+          overflow: hidden;
+          color: #6f787f;
+          font-size: 9px;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .dashboard-more-stops {
+          margin-left: 18px;
+          color: #687178;
+          font-size: 9px;
+        }
+
+        .dashboard-no-stops {
+          margin-top: 12px;
+          color: #687178;
+          font-size: 10px;
+        }
+        .stat-strip article b {
+          color: var(--rb-accent);
+        }
+        .dashboard-readiness-list {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin: 18px 0;
+        }
+
+        .dashboard-readiness-item {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          color: #a2a9ae;
+          font-size: 11px;
+        }
+
+        .dashboard-readiness-item > span {
+          display: grid;
+          place-items: center;
+          width: 19px;
+          height: 19px;
+          flex: 0 0 19px;
+          border: 1px solid rgba(255, 106, 26, 0.35);
+          border-radius: 50%;
+          color: var(--rb-accent);
+          font-size: 9px;
+          font-weight: 900;
+        }
+
+        .dashboard-readiness-item.done {
+          color: #dfe3e5;
+        }
+
+        .dashboard-readiness-item.done > span {
+          border-color: rgba(34, 197, 94, 0.4);
+          color: #22c55e;
+          background: rgba(34, 197, 94, 0.08);
+        }
+
+        .dashboard-readiness-actions {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          flex-wrap: wrap;
+        }
+        .dashboard-attention-card {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 16px;
+          margin-top: 12px;
+          padding: 18px 20px;
+          background:
+            linear-gradient(
+              90deg,
+              rgba(255, 106, 26, 0.08),
+              rgba(255, 106, 26, 0.025)
+            ),
+            var(--rb-panel);
+          border: 1px solid rgba(255, 106, 26, 0.18);
+          border-radius: 16px;
+        }
+
+        .dashboard-attention-icon {
+          display: grid;
+          place-items: center;
+          width: 38px;
+          height: 38px;
+          border: 1px solid rgba(255, 106, 26, 0.35);
+          border-radius: 50%;
+          background: rgba(255, 106, 26, 0.1);
+          color: var(--rb-accent);
+          font-size: 15px;
+          font-weight: 900;
+        }
+
+        .dashboard-attention-copy {
+          min-width: 0;
+        }
+
+        .dashboard-attention-copy h2 {
+          margin: 4px 0 3px;
+          color: var(--rb-text);
+          font-size: 17px;
+          letter-spacing: -0.02em;
+        }
+
+        .dashboard-attention-copy p {
+          margin: 0;
+          color: var(--rb-muted);
+          font-size: 11px;
+          line-height: 1.5;
+        }
+
+        .dashboard-attention-action {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          color: var(--rb-accent);
+          font-size: 11px;
+          font-weight: 800;
+          text-decoration: none;
+          white-space: nowrap;
+        }
+
+        .dashboard-attention-action:hover {
+          text-decoration: underline;
+        }
+
+        @media (max-width: 700px) {
+          .dashboard-attention-card {
+            grid-template-columns: auto minmax(0, 1fr);
+          }
+
+          .dashboard-attention-action {
+            grid-column: 2;
+          }
+        }
+        .budget-status {
+          font-size: 9px;
+          font-weight: 850;
+          letter-spacing: 0.1em;
+        }
+
+        .budget-status.healthy {
+          color: #22c55e;
+        }
+
+        .budget-status.warning {
+          color: #facc15;
+        }
+
+        .budget-status.over {
+          color: #ef4444;
+        }
+
+        .budget-status.unset {
+          color: var(--rb-muted);
+        }
+
+        .budget-message {
+          margin-top: 14px;
+          padding-top: 13px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          color: var(--rb-muted);
+          font-size: 10px;
+          line-height: 1.5;
+        }
+
+        .budget-message.warning {
+          color: #d7c77a;
+        }
+
+        .budget-message.over {
+          color: #e58b8b;
+        }
+
+        .budget-message.unset {
+          color: var(--rb-muted);
+        }
+
+        .budget-message a {
+          margin-left: 8px;
+          color: var(--rb-accent);
+          font-weight: 800;
+          text-decoration: none;
+        }
+
+        .budget-message a:hover {
+          text-decoration: underline;
+        }
       `}</style>
 
       <section className="dashboard-hero">
@@ -691,27 +1181,40 @@ function Dashboard() {
 
         <div className="hero-bottom">
           <div className="countdown-big">
-            <b>{days}</b>
-            <span>
-              DAYS
-              <br />
-              TO GO
-            </span>
+            {daysToDeparture === null ? (
+              <Link href="/ride-prep" className="countdown-set-date">
+                <b>+</b>
+                <span>SET DATE</span>
+              </Link>
+            ) : (
+              <>
+                <b>{daysToDeparture > 0 ? daysToDeparture : "ON"}</b>
+
+                <span>{daysToDeparture > 0 ? "DAYS TO GO" : "THE ROAD"}</span>
+              </>
+            )}
           </div>
 
           <div className="departure">
-            <small>DEPARTURE</small>
-            <strong>
-              {data.trip.startDate
-                ? new Date(
+            <div className="departure">
+              <small>{tripHasStarted ? "TRIP STARTED" : "DEPARTURE"}</small>
+
+              <strong>
+                {data.trip.startDate ? (
+                  new Date(
                     `${data.trip.startDate}T00:00:00`,
                   ).toLocaleDateString("en-IN", {
                     day: "2-digit",
                     month: "short",
                     year: "numeric",
                   })
-                : "Set a date"}
-            </strong>
+                ) : (
+                  <Link href="/ride-prep" className="departure-set-date">
+                    Set a date →
+                  </Link>
+                )}
+              </strong>
+            </div>
           </div>
 
           <Link href="/itinerary" className="button hero-button">
@@ -720,84 +1223,191 @@ function Dashboard() {
         </div>
       </section>
 
-      <section className="dashboard-stat-strip">
-        <article className="dashboard-stat">
+      <section className="stat-strip">
+        <article>
           <span className="stat-icon">↗</span>
           <div>
-            <b>{data.itinerary.length}</b>
-            <small>ROUTE DAYS</small>
+            <b>{route.length}</b>
+            <small>RIDE DAYS</small>
           </div>
         </article>
 
-        <article className="dashboard-stat">
-          <span className="stat-icon">✓</span>
+        <article>
+          <span className="stat-icon">⌁</span>
           <div>
             <b>
-              {packed}
-              <i>/{data.packing.length}</i>
+              {totalDistance
+                ? `${totalDistance.toLocaleString("en-IN")} km`
+                : "—"}
             </b>
-            <small>PACKED</small>
+            <small>ROAD DISTANCE</small>
           </div>
         </article>
 
-        <article className="dashboard-stat">
+        <article>
+          <span className="stat-icon">◉</span>
+          <div>
+            <b>{data.stops.length}</b>
+            <small>ROAD STOPS</small>
+          </div>
+        </article>
+
+        <article>
           <span className="stat-icon">₹</span>
           <div>
             <b>₹{total.toLocaleString("en-IN")}</b>
             <small>SPENT</small>
           </div>
         </article>
-
-        <article className="dashboard-stat">
-          <span className="stat-icon">◌</span>
-          <div>
-            <b>₹{budget.toLocaleString("en-IN")}</b>
-            <small>BUDGET</small>
-          </div>
-        </article>
       </section>
+      <section className="dashboard-trip-progress">
+        <div className="dashboard-trip-progress-top">
+          <div>
+            <span className="eyebrow">TRIP PROGRESS</span>
 
+            <h2>
+              {totalTripDays > 0
+                ? `DAY ${Math.min(
+                    completedTripDays + 1,
+                    totalTripDays,
+                  )} OF ${totalTripDays}`
+                : "NO ROUTE PLANNED"}
+            </h2>
+          </div>
+
+          <strong>{tripProgressPct}%</strong>
+        </div>
+
+        <div className="dashboard-trip-progress-bar">
+          <i
+            style={{
+              width: `${tripProgressPct}%`,
+            }}
+          />
+        </div>
+
+        <div className="dashboard-trip-progress-meta">
+          <span>
+            {Math.round(completedDistance).toLocaleString("en-IN")} km ridden
+          </span>
+
+          <span>
+            {Math.round(remainingDistance).toLocaleString("en-IN")} km remaining
+          </span>
+        </div>
+      </section>
       <section className="dashboard-main-grid">
         <article className="dashboard-card">
           <div className="card-inner">
             <div className="card-top">
               <span className="eyebrow">NEXT ON THE ROAD</span>
               <span className="day-badge">
-                {next ? `DAY ${next.day}` : "DAY —"}
+                {upcomingRoute
+                  ? nextRideIsToday
+                    ? "TODAY"
+                    : `DAY ${upcomingRoute.day}`
+                  : "DAY —"}
               </span>
             </div>
 
             <div className="route-big">
-              {next ? (
+              {upcomingRoute ? (
                 <>
-                  <strong>{next.from}</strong>
+                  <strong>{nextRouteStart}</strong>
                   <span>→</span>
-                  <strong>{next.to}</strong>
+                  <strong>{nextRouteEnd}</strong>
                 </>
               ) : (
                 <strong>Add your first ride day</strong>
               )}
             </div>
+            <div className="dashboard-route-intelligence">
+              <div>
+                <span>DISTANCE</span>
+                <strong>{Math.round(nextDayDistance)} km</strong>
+              </div>
 
-            <p className="route-description">
-              {next?.notes ||
-                "Your next route will appear here once you add a dated ride day."}
+              <div>
+                <span>STOPS</span>
+                <strong>{nextDayStopCount}</strong>
+              </div>
+
+              <div>
+                <span>RIDE TYPE</span>
+                <strong>
+                  {nextDayRideTypes.length ? nextDayRideTypes.join(" · ") : "—"}
+                </strong>
+              </div>
+            </div>
+            <p>
+              {upcomingRoute?.notes ||
+                "Your next ride details will appear here once the route is planned."}
             </p>
 
+            {upcomingRoute && (
+              <div className="dashboard-stop-summary">
+                <div className="dashboard-stop-heading">
+                  <span className="eyebrow">STOPS ON THIS DAY</span>
+
+                  <span>{nextStops.length}</span>
+                </div>
+
+                {nextStops.length ? (
+                  <div className="dashboard-stop-list">
+                    {nextStops.slice(0, 4).map((stop) => (
+                      <div key={stop.id} className="dashboard-stop">
+                        <span className={`dashboard-stop-dot ${stop.type}`} />
+
+                        <div>
+                          <strong>{stop.location}</strong>
+
+                          <small>
+                            {stop.type}
+                            {stop.notes ? ` · ${stop.notes}` : ""}
+                          </small>
+                        </div>
+                      </div>
+                    ))}
+
+                    {nextStops.length > 4 && (
+                      <small className="dashboard-more-stops">
+                        +{nextStops.length - 4} more stops
+                      </small>
+                    )}
+                  </div>
+                ) : (
+                  <div className="dashboard-no-stops">
+                    No stops planned for this ride day yet.
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="route-meta">
-              <span>◷ {next?.rideType || "Ride day"}</span>
-              <span>⌁ {next?.distanceKm || "—"} km</span>
-              {next?.date ? (
+              <span>◷ {upcomingRoute?.rideType || "Ride day"}</span>
+
+              <span>
+                ⌁{" "}
+                {nextDayItems.length
+                  ? nextDayItems
+                      .reduce(
+                        (sum, item) => sum + Number(item.distanceKm || 0),
+                        0,
+                      )
+                      .toLocaleString("en-IN")
+                  : "—"}{" "}
+                km
+              </span>
+
+              {nextRideDate && (
                 <span>
                   ◷{" "}
-                  {new Date(
-                    `${next.date}T00:00:00`,
-                  ).toLocaleDateString("en-IN", {
+                  {nextRideDate.toLocaleDateString("en-IN", {
                     day: "2-digit",
                     month: "short",
                   })}
                 </span>
-              ) : null}
+              )}
             </div>
 
             <Link href="/itinerary" className="text-link">
@@ -817,26 +1427,53 @@ function Dashboard() {
               className="progress-ring"
               style={
                 {
-                  "--progress": `${packingPct * 3.6}deg`,
+                  "--progress": `${readinessPct * 3.6}deg`,
                 } as React.CSSProperties
               }
             >
               <div>
-                <b>{packingPct}%</b>
+                <b>{readinessPct}%</b>
                 <small>READY</small>
               </div>
             </div>
           </div>
 
           <h2>
-            {data.packing.length - packed} things left to pack
+            {readinessPct === 100
+              ? "You're ready to ride."
+              : `${readinessChecks.length - readinessDone} things need attention`}
           </h2>
 
-          <p>Get the essentials sorted before departure day.</p>
+          <p>
+            {readinessPct === 100
+              ? "Route, budget, packing and ride prep are all sorted."
+              : "A few things still need attention before departure day."}
+          </p>
 
-          <Link href="/packing" className="button dark-button">
-            Open packing list <span>→</span>
-          </Link>
+          <div className="dashboard-readiness-list">
+            {readinessChecks.map((check) => (
+              <div
+                key={check.label}
+                className={`dashboard-readiness-item ${
+                  check.done ? "done" : ""
+                }`}
+              >
+                <span>{check.done ? "✓" : "!"}</span>
+
+                <strong>{check.label}</strong>
+              </div>
+            ))}
+          </div>
+
+          <div className="dashboard-readiness-actions">
+            <Link href="/packing" className="button dark-button">
+              Open packing <span>→</span>
+            </Link>
+
+            <Link href="/ride-prep" className="text-link">
+              Ride prep →
+            </Link>
+          </div>
         </article>
       </section>
 
@@ -844,35 +1481,79 @@ function Dashboard() {
         <article className="dashboard-card budget-card">
           <div className="card-top">
             <span className="eyebrow">SPEND TRACKER</span>
-            <span className="budget-percentage">
-              {budgetPct}% OF BUDGET
+
+            <span className={`budget-status ${budgetStatus}`}>
+              {budgetStatusLabel}
             </span>
           </div>
 
           <div className="money-line">
             <b>₹{total.toLocaleString("en-IN")}</b>
-            <span>of ₹{budget.toLocaleString("en-IN")}</span>
+
+            <span>
+              {budget
+                ? `of ₹${budget.toLocaleString("en-IN")}`
+                : "No budget set"}
+            </span>
           </div>
 
-          <div className="meter">
-            <i style={{ width: `${budgetPct}%` }} />
-          </div>
+          {budget ? (
+            <>
+              <div className="meter">
+                <i
+                  style={{
+                    width: `${budgetPct}%`,
+                  }}
+                />
+              </div>
 
-          <div className="budget-foot">
-            <span>Remaining</span>
-            <strong>₹{remaining.toLocaleString("en-IN")}</strong>
-            <Link href="/expenses">Manage expenses →</Link>
-          </div>
+              <div className="budget-foot">
+                <span>Remaining</span>
+
+                <strong>
+                  ₹{Math.max(0, remaining).toLocaleString("en-IN")}
+                </strong>
+
+                <Link href="/expenses">Manage expenses →</Link>
+              </div>
+
+              <div className={`budget-message ${budgetStatus}`}>
+                {budgetStatusText}
+              </div>
+            </>
+          ) : (
+            <div className="budget-message unset">
+              {budgetStatusText}
+
+              <Link href="/ride-prep">Set budget →</Link>
+            </div>
+          )}
         </article>
 
         <article className="quote-card">
           <span>“</span>
           <p>
-            Good trips are planned. Great trips leave room for the road
-            to surprise you.
+            Good trips are planned. Great trips leave room for the road to
+            surprise you.
           </p>
           <small>— YOUR ROADBOOK</small>
         </article>
+      </section>
+      <section className="dashboard-attention-card">
+        <div className="dashboard-attention-icon">!</div>
+
+        <div className="dashboard-attention-copy">
+          <span className="eyebrow">ROADBOOK ATTENTION</span>
+
+          <h2>{attentionTitle}</h2>
+
+          <p>{attentionText}</p>
+        </div>
+
+        <Link href={attentionHref} className="dashboard-attention-action">
+          {attentionAction}
+          <span>→</span>
+        </Link>
       </section>
     </div>
   );
