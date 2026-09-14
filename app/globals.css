@@ -11,7 +11,9 @@
   --yellow: #f3c84b;
   --green: #cfe2d3;
   --shadow: 0 18px 50px rgba(16, 47, 43, 0.07);
+  --rb-bg: #090b0d;
 }
+
 * {
   box-sizing: border-box;
 }
@@ -20,7 +22,7 @@ html {
 }
 body {
   margin: 0;
-  background: var(--cream);
+  background: var(--rb-bg);
   color: var(--ink);
   font-family: "DM Sans", sans-serif;
 }
@@ -290,6 +292,7 @@ a {
   margin-left: 248px;
   width: calc(100% - 248px);
   min-width: 0;
+  background: #050607;
 }
 .topbar {
   height: 70px;
@@ -1445,6 +1448,7 @@ footer {
   .main-shell {
     margin-left: 0;
     width: 100%;
+    background: #050607;
   }
   .topbar {
     height: 62px;
@@ -2857,4 +2861,240 @@ footer {
     hue-rotate(335deg)
     brightness(98%)
     contrast(96%);
+}
+/* =========================================================
+   ROADBOOK — LOADING STATE
+   ========================================================= */
+
+.state-loading {
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 24px;
+  background:
+    radial-gradient(
+      circle at center,
+      rgba(255, 106, 26, 0.055),
+      transparent 55%
+    ),
+    #101316;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+}
+
+.state-loading-mark {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 106, 26, 0.35);
+  border-radius: 13px;
+  background: rgba(255, 106, 26, 0.07);
+  box-shadow:
+    0 0 0 6px rgba(255, 106, 26, 0.025),
+    0 8px 30px rgba(0, 0, 0, 0.25);
+  animation: roadbook-loading-pulse 1.8s ease-in-out infinite;
+}
+
+.state-loading-mark span {
+  color: var(--rb-accent, #ff6a1a);
+  font: 500 12px "DM Mono";
+  letter-spacing: 0.04em;
+}
+
+.state-loading-copy {
+  margin-top: 22px;
+}
+
+.state-loading-copy > span {
+  display: block;
+  color: var(--rb-accent, #ff6a1a);
+  font: 8px "DM Mono";
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.state-loading-copy strong {
+  display: block;
+  margin-top: 8px;
+  color: #c7cbd0;
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.state-loading-copy p {
+  margin: 6px 0 0;
+  color: #737b82;
+  font-size: 10px;
+}
+
+.state-loading-line {
+  width: 150px;
+  height: 2px;
+  margin-top: 24px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+}
+
+.state-loading-line i {
+  display: block;
+  width: 45%;
+  height: 100%;
+  background: var(--rb-accent, #ff6a1a);
+  border-radius: inherit;
+  animation: roadbook-loading-slide 1.4s ease-in-out infinite;
+}
+
+@keyframes roadbook-loading-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+
+@keyframes roadbook-loading-slide {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  50% {
+    transform: translateX(120%);
+  }
+
+  100% {
+    transform: translateX(330%);
+  }
+}
+/* =========================================================
+   ROADBOOK — GLOBAL DARK BACKGROUND
+   ========================================================= */
+
+html,
+body {
+  background: #050607 !important;
+}
+
+.app-shell {
+  background: #050607 !important;
+}
+
+.main-shell {
+  background: #050607 !important;
+}
+
+.page-wrap {
+  background: #050607 !important;
+}
+main {
+  background: #050607 !important;
+}
+/* =========================================================
+   ROADBOOK — FORCE DARK CONTENT AREA
+   ========================================================= */
+
+html,
+body {
+  background: #050607 !important;
+}
+
+body {
+  color: #d7dbde;
+}
+
+.app-shell {
+  min-height: 100vh;
+  background: #050607 !important;
+}
+
+.main-shell {
+  min-height: 100vh;
+  background: #050607 !important;
+}
+
+.page-wrap {
+  min-height: calc(100vh - 70px);
+  background: #050607 !important;
+}
+
+/* Keep the light sidebar intentional */
+.sidebar {
+  background: var(--cream) !important;
+}
+/* =========================================================
+   ROADBOOK — MOBILE NAVIGATION
+   ========================================================= */
+
+.mobile-nav {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .mobile-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    height: 64px;
+    padding: 7px 6px calc(7px + env(safe-area-inset-bottom));
+    background: rgba(10, 12, 13, 0.97);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(12px);
+  }
+
+  .mobile-nav a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-width: 0;
+    color: #737b82;
+    text-decoration: none;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    border-radius: 9px;
+  }
+
+  .mobile-nav a.active {
+    color: var(--rb-accent);
+    background: rgba(255, 106, 26, 0.08);
+  }
+
+  .mobile-nav-icon {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    font: 12px "DM Mono";
+  }
+
+  .mobile-nav a.active .mobile-nav-icon {
+    color: var(--rb-accent);
+  }
+
+  .main-shell {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding-bottom: 76px;
+  }
+
+  .sidebar {
+    display: none;
+  }
 }

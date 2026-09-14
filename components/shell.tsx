@@ -60,6 +60,18 @@ function Frame({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </aside>
+      <nav className="mobile-nav">
+  {links.map(([href, label, icon]) => (
+    <Link
+      key={href}
+      href={href}
+      className={path === href ? "active" : ""}
+    >
+      <span className="mobile-nav-icon">{icon}</span>
+      <span>{label}</span>
+    </Link>
+  ))}
+</nav>
       <div className="main-shell">
         <header className="topbar">
           <div className="mobile-brand">

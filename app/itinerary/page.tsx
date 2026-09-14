@@ -51,6 +51,8 @@ function Itinerary() {
   const [busy, setBusy] = useState(false);
   const [stopBusy, setStopBusy] = useState(false);
 
+  const [selectedStop, setSelectedStop] = useState<RoadbookStop | null>(null);
+
   const [stopDraft, setStopDraft] = useState({
     type: "fuel" as RoadbookStop["type"],
     location: "",
@@ -138,6 +140,7 @@ function Itinerary() {
   const close = () => {
     setMode(null);
     setSelected(null);
+    setSelectedStop(null);
     setDraft(blank);
 
     setStopDraft({
@@ -194,7 +197,74 @@ function Itinerary() {
       });
     }
   };
+  const editStop = (stop: RoadbookStop) => {
+    setSelectedStop(stop);
 
+    setStopDraft({
+      type: stop.type,
+      location: stop.location,
+      notes: stop.notes,
+    });
+  };
+
+  const submitStopEdit = async (event: FormEvent) => {
+    event.preventDefault();
+
+    if (!selectedStop || !stopDraft.location.trim()) {
+      return;
+    }
+
+    setStopBusy(true);
+
+    const ok = await save("stops", "PATCH", {
+      id: selectedStop.id,
+      day: selectedStop.day,
+      type: stopDraft.type,
+      location: stopDraft.location.trim(),
+      notes: stopDraft.notes.trim(),
+      sortOrder: selectedStop.sortOrder,
+    });
+
+    setStopBusy(false);
+
+    if (ok) {
+      setSelectedStop(null);
+
+      setStopDraft({
+        type: "fuel",
+        location: "",
+        notes: "",
+      });
+    }
+  };
+
+  const deleteStop = async (stop: RoadbookStop) => {
+    const confirmed = window.confirm(
+      `Delete the ${stop.type} stop at ${stop.location}?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setStopBusy(true);
+
+    const ok = await save("stops", "DELETE", {
+      id: stop.id,
+    });
+
+    setStopBusy(false);
+
+    if (ok && selectedStop?.id === stop.id) {
+      setSelectedStop(null);
+
+      setStopDraft({
+        type: "fuel",
+        location: "",
+        notes: "",
+      });
+    }
+  };
   const stops = route
     .flatMap((item, index) => (index === 0 ? [item.from, item.to] : [item.to]))
     .filter(Boolean);
@@ -827,22 +897,22 @@ function Itinerary() {
           }
         }
         @media (max-width: 680px) {
-        .stop-form-grid {
-  grid-template-columns: 1fr;
-}
+          .stop-form-grid {
+            grid-template-columns: 1fr;
+          }
 
-.stop-form .wide {
-  grid-column: auto;
-}
+          .stop-form .wide {
+            grid-column: auto;
+          }
 
-.ride-stop-item {
-  grid-template-columns: 1fr;
-  gap: 6px;
-}
+          .ride-stop-item {
+            grid-template-columns: 1fr;
+            gap: 6px;
+          }
 
-.ride-stop-type {
-  width: fit-content;
-}
+          .ride-stop-type {
+            width: fit-content;
+          }
           .itinerary-page {
             margin: 0 -4px;
           }
@@ -1106,6 +1176,57 @@ function Itinerary() {
 
         .stop-submit {
           margin-top: 10px;
+        }
+        .ride-stop-content {
+          min-width: 0;
+        }
+
+        .ride-stop-actions {
+          display: flex;
+          gap: 10px;
+          margin-top: 7px;
+        }
+
+        .ride-stop-actions button,
+        .stop-cancel-edit {
+          border: 0;
+          background: transparent;
+          padding: 0;
+          color: var(--rb-muted);
+          font-size: 9px;
+          font-weight: 750;
+          cursor: pointer;
+        }
+
+        .ride-stop-actions button:hover,
+        .stop-cancel-edit:hover {
+          color: var(--rb-accent);
+          text-decoration: underline;
+        }
+
+        .ride-stop-actions .stop-delete {
+          color: #d87970;
+        }
+
+        .ride-stop-actions .stop-delete:hover {
+          color: #ff8d67;
+        }
+
+        .ride-stop-actions button:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+        }
+
+        .stop-form-heading {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 12px;
+        }
+
+        .stop-cancel-edit {
+          color: var(--rb-accent);
         }
       `}</style>
 
@@ -1404,15 +1525,61 @@ function Itinerary() {
                           {stop.type}
                         </span>
 
-                        <div>
+                        <div className="ride-stop-content">
                           <strong>{stop.location}</strong>
 
                           {stop.notes && <small>{stop.notes}</small>}
+
+                          <div className="ride-stop-actions">
+                            <button
+                              type="button"
+                              onClick={() => editStop(stop)}
+                              disabled={stopBusy}
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              type="button"
+                              className="stop-delete"
+                              onClick={() => deleteStop(stop)}
+                              disabled={stopBusy}
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
 
-                  <form className="stop-form" onSubmit={submitStop}>
+                  <form
+                    className="stop-form"
+                    onSubmit={selectedStop ? submitStopEdit : submitStop}
+                  >
+                    <div className="stop-form-heading">
+                      <span className="eyebrow">
+                        {selectedStop ? "EDIT STOP" : "ADD ROAD STOP"}
+                      </span>
+
+                      {selectedStop && (
+                        <button
+                          type="button"
+                          className="stop-cancel-edit"
+                          onClick={() => {
+                            setSelectedStop(null);
+
+                            setStopDraft({
+                              type: "fuel",
+                              location: "",
+                              notes: "",
+                            });
+                          }}
+                        >
+                          Cancel edit
+                        </button>
+                      )}
+                    </div>
+
                     <div className="stop-form-grid">
                       <label>
                         Stop type
@@ -1467,7 +1634,11 @@ function Itinerary() {
                       className="button stop-submit"
                       disabled={stopBusy}
                     >
-                      {stopBusy ? "Adding…" : "+ Add stop"}
+                      {stopBusy
+                        ? "Saving…"
+                        : selectedStop
+                          ? "Save stop"
+                          : "+ Add stop"}
                     </button>
                   </form>
                 </div>
