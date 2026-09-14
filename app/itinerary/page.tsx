@@ -49,7 +49,13 @@ function Itinerary() {
   const [selected, setSelected] = useState<ItineraryItem | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>(blank);
   const [busy, setBusy] = useState(false);
+  const [stopBusy, setStopBusy] = useState(false);
 
+  const [stopDraft, setStopDraft] = useState({
+    type: "fuel" as RoadbookStop["type"],
+    location: "",
+    notes: "",
+  });
   const [geocodedStops, setGeocodedStops] = useState<GeocodeCache>({});
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState("");
@@ -133,6 +139,12 @@ function Itinerary() {
     setMode(null);
     setSelected(null);
     setDraft(blank);
+
+    setStopDraft({
+      type: "fuel",
+      location: "",
+      notes: "",
+    });
   };
   const openDate = (date: string, day: number) => {
     const item = byDate.get(date) ?? null;
@@ -152,16 +164,35 @@ function Itinerary() {
     setDraft(item);
     setMode("view");
   };
-  const submit = async (event: FormEvent) => {
+  const submitStop = async (event: FormEvent) => {
     event.preventDefault();
-    setBusy(true);
-    const ok = await save(
-      "itinerary",
-      mode === "edit" && selected ? "PATCH" : "POST",
-      mode === "edit" && selected ? { ...draft, id: selected.id } : draft,
-    );
-    setBusy(false);
-    if (ok) close();
+
+    if (!selected || !stopDraft.location.trim()) {
+      return;
+    }
+
+    setStopBusy(true);
+
+    const dayStops = data.stops.filter((stop) => stop.day === selected.day);
+
+    const ok = await save("stops", "POST", {
+      id: `stop-${Date.now()}`,
+      day: selected.day,
+      type: stopDraft.type,
+      location: stopDraft.location.trim(),
+      notes: stopDraft.notes.trim(),
+      sortOrder: String(dayStops.length + 1),
+    });
+
+    setStopBusy(false);
+
+    if (ok) {
+      setStopDraft({
+        type: "fuel",
+        location: "",
+        notes: "",
+      });
+    }
   };
 
   const stops = route
@@ -288,7 +319,7 @@ function Itinerary() {
       cancelled = true;
     };
   }, [data?.itinerary]);
- 
+
   const mapDays = Array.from(
     new Map(
       route.map((item) => [
@@ -309,59 +340,56 @@ function Itinerary() {
       to: dayItems[dayItems.length - 1]?.to ?? "",
     };
   });
-   useEffect(() => {
-  if (!data?.stops?.length) {
-    setGeocodedRoadbookStops([]);
-    return;
-  }
-
-  let cancelled = false;
-
-  const loadRoadbookStops = async () => {
-    const results: MapStop[] = [];
-
-    for (const stop of data.stops) {
-      if (cancelled) return;
-
-      const key = stop.location.trim().toLowerCase();
-
-      if (!key) continue;
-
-      let coordinates: GeocodedLocation | null =
-        geocodedStops[key] ?? null;
-
-      if (!coordinates) {
-        coordinates = await geocodeStop(stop.location);
-
-        await new Promise((resolve) =>
-          setTimeout(resolve, 1100)
-        );
-      }
-
-      if (coordinates) {
-        results.push({
-          id: stop.id,
-          day: stop.day,
-          type: stop.type,
-          location: stop.location,
-          notes: stop.notes,
-          latitude: coordinates.latitude,
-          longitude: coordinates.longitude,
-        });
-      }
+  useEffect(() => {
+    if (!data?.stops?.length) {
+      setGeocodedRoadbookStops([]);
+      return;
     }
 
-    if (!cancelled) {
-      setGeocodedRoadbookStops(results);
-    }
-  };
+    let cancelled = false;
 
-  loadRoadbookStops();
+    const loadRoadbookStops = async () => {
+      const results: MapStop[] = [];
 
-  return () => {
-    cancelled = true;
-  };
-}, [data?.stops, geocodedStops]);
+      for (const stop of data.stops) {
+        if (cancelled) return;
+
+        const key = stop.location.trim().toLowerCase();
+
+        if (!key) continue;
+
+        let coordinates: GeocodedLocation | null = geocodedStops[key] ?? null;
+
+        if (!coordinates) {
+          coordinates = await geocodeStop(stop.location);
+
+          await new Promise((resolve) => setTimeout(resolve, 1100));
+        }
+
+        if (coordinates) {
+          results.push({
+            id: stop.id,
+            day: stop.day,
+            type: stop.type,
+            location: stop.location,
+            notes: stop.notes,
+            latitude: coordinates.latitude,
+            longitude: coordinates.longitude,
+          });
+        }
+      }
+
+      if (!cancelled) {
+        setGeocodedRoadbookStops(results);
+      }
+    };
+
+    loadRoadbookStops();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [data?.stops, geocodedStops]);
   return (
     <div className="itinerary-page">
       <style jsx global>{`
@@ -799,6 +827,22 @@ function Itinerary() {
           }
         }
         @media (max-width: 680px) {
+        .stop-form-grid {
+  grid-template-columns: 1fr;
+}
+
+.stop-form .wide {
+  grid-column: auto;
+}
+
+.ride-stop-item {
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.ride-stop-type {
+  width: fit-content;
+}
           .itinerary-page {
             margin: 0 -4px;
           }
@@ -922,6 +966,146 @@ function Itinerary() {
             width: 34px;
             height: 34px;
           }
+        }
+        .ride-stops {
+          margin-top: 26px;
+          padding-top: 20px;
+          border-top: 1px solid var(--rb-line);
+        }
+
+        .ride-stops-heading {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 12px;
+        }
+
+        .ride-stops-heading h3 {
+          margin: 5px 0 0;
+          color: var(--rb-text);
+          font-size: 16px;
+        }
+
+        .ride-stop-count {
+          display: grid;
+          place-items: center;
+          width: 26px;
+          height: 26px;
+          border: 1px solid var(--rb-line);
+          border-radius: 50%;
+          color: var(--rb-accent);
+          font-size: 10px;
+          font-weight: 850;
+        }
+
+        .ride-stop-item {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+          align-items: start;
+          gap: 11px;
+          padding: 10px 0;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+        }
+
+        .ride-stop-item strong {
+          display: block;
+          color: var(--rb-text);
+          font-size: 12px;
+        }
+
+        .ride-stop-item small {
+          display: block;
+          margin-top: 3px;
+          color: var(--rb-muted);
+          font-size: 10px;
+          line-height: 1.4;
+        }
+
+        .ride-stop-type {
+          min-width: 82px;
+          padding: 5px 7px;
+          border: 1px solid var(--rb-line);
+          border-radius: 999px;
+          color: var(--rb-muted);
+          font-size: 8px;
+          font-weight: 850;
+          letter-spacing: 0.08em;
+          text-align: center;
+          text-transform: uppercase;
+        }
+
+        .ride-stop-type.fuel {
+          color: #facc15;
+          border-color: rgba(250, 204, 21, 0.25);
+        }
+
+        .ride-stop-type.food {
+          color: #fb923c;
+          border-color: rgba(251, 146, 60, 0.25);
+        }
+
+        .ride-stop-type.sightseeing {
+          color: #60a5fa;
+          border-color: rgba(96, 165, 250, 0.25);
+        }
+
+        .ride-stop-type.stay {
+          color: #c084fc;
+          border-color: rgba(192, 132, 252, 0.25);
+        }
+
+        .stop-form {
+          margin-top: 16px;
+          padding: 14px;
+          background: rgba(255, 255, 255, 0.025);
+          border: 1px solid var(--rb-line);
+          border-radius: 10px;
+        }
+
+        .stop-form-grid {
+          display: grid;
+          grid-template-columns: 0.7fr 1.3fr;
+          gap: 10px;
+        }
+
+        .stop-form label {
+          display: block;
+          color: #aeb5ba;
+          font-size: 10px;
+          font-weight: 700;
+        }
+
+        .stop-form input,
+        .stop-form select {
+          width: 100%;
+          box-sizing: border-box;
+          margin-top: 6px;
+          border: 1px solid var(--rb-line);
+          background: #0b0d0f;
+          color: #fff;
+          border-radius: 8px;
+          padding: 9px 10px;
+          outline: none;
+          font: inherit;
+        }
+
+        .stop-form input:focus,
+        .stop-form select:focus {
+          border-color: rgba(255, 106, 26, 0.65);
+        }
+
+        .stop-form select option {
+          background: #111416;
+          color: #fff;
+        }
+
+        .stop-form .wide {
+          grid-column: 1 / -1;
+        }
+
+        .stop-submit {
+          margin-top: 10px;
         }
       `}</style>
 
@@ -1188,6 +1372,105 @@ function Itinerary() {
                 <p className="ride-notes">
                   {selected.notes || "No notes added for this route yet."}
                 </p>
+                <div className="ride-stops">
+                  <div className="ride-stops-heading">
+                    <div>
+                      <span className="eyebrow">ROAD STOPS</span>
+                      <h3>
+                        {data.stops.filter((stop) => stop.day === selected.day)
+                          .length
+                          ? "Stops on this day"
+                          : "No stops yet"}
+                      </h3>
+                    </div>
+
+                    <span className="ride-stop-count">
+                      {
+                        data.stops.filter((stop) => stop.day === selected.day)
+                          .length
+                      }
+                    </span>
+                  </div>
+
+                  {data.stops
+                    .filter((stop) => stop.day === selected.day)
+                    .sort(
+                      (a, b) =>
+                        Number(a.sortOrder || 0) - Number(b.sortOrder || 0),
+                    )
+                    .map((stop) => (
+                      <div className="ride-stop-item" key={stop.id}>
+                        <span className={`ride-stop-type ${stop.type}`}>
+                          {stop.type}
+                        </span>
+
+                        <div>
+                          <strong>{stop.location}</strong>
+
+                          {stop.notes && <small>{stop.notes}</small>}
+                        </div>
+                      </div>
+                    ))}
+
+                  <form className="stop-form" onSubmit={submitStop}>
+                    <div className="stop-form-grid">
+                      <label>
+                        Stop type
+                        <select
+                          value={stopDraft.type}
+                          onChange={(event) =>
+                            setStopDraft({
+                              ...stopDraft,
+                              type: event.target.value as RoadbookStop["type"],
+                            })
+                          }
+                        >
+                          <option value="fuel">Fuel</option>
+                          <option value="food">Food</option>
+                          <option value="sightseeing">Sightseeing</option>
+                          <option value="stay">Stay</option>
+                        </select>
+                      </label>
+
+                      <label>
+                        Location
+                        <input
+                          required
+                          placeholder="e.g. Amboli"
+                          value={stopDraft.location}
+                          onChange={(event) =>
+                            setStopDraft({
+                              ...stopDraft,
+                              location: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
+
+                      <label className="wide">
+                        Notes
+                        <input
+                          placeholder="Optional note"
+                          value={stopDraft.notes}
+                          onChange={(event) =>
+                            setStopDraft({
+                              ...stopDraft,
+                              notes: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="button stop-submit"
+                      disabled={stopBusy}
+                    >
+                      {stopBusy ? "Adding…" : "+ Add stop"}
+                    </button>
+                  </form>
+                </div>
                 <div className="modal-actions">
                   <button className="button" onClick={() => setMode("edit")}>
                     Edit ride day
@@ -1211,7 +1494,7 @@ function Itinerary() {
                   {mode === "add" ? "NEW RIDE DAY" : "UPDATE ROUTE"}
                 </p>
                 <h2>{mode === "add" ? "Add ride day" : "Edit ride day"}</h2>
-                <form onSubmit={submit} className="data-form">
+                <form onSubmit={submitStop} className="data-form">
                   <label>
                     Trip day
                     <input
