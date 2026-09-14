@@ -2840,3 +2840,21 @@ footer {
   font-size: 13px;
   line-height: 1.2;
 }
+/* Expense date picker */
+
+.data-form input[type="date"] {
+  color-scheme: light;
+  cursor: pointer;
+}
+
+.data-form input[type="date"]::-webkit-calendar-picker-indicator {
+  opacity: 1;
+  cursor: pointer;
+  filter:
+    invert(48%)
+    sepia(82%)
+    saturate(1700%)
+    hue-rotate(335deg)
+    brightness(98%)
+    contrast(96%);
+}
