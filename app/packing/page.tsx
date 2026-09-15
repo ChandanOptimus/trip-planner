@@ -189,84 +189,86 @@ function Packing() {
               <p>Add your first item using the panel on the right.</p>
             </div>
           ) : groupByCategory ? (
-            <div className="packing-category-groups">
-              {visibleCategories.map((categoryName) => {
-                const items = packingGroups?.[categoryName] ?? [];
-                const packedCount = items.filter(
-                  (item) => item.packed === "true",
-                ).length;
+            <div className="packing-category-scroll">
+              <div className="packing-category-groups grouped">
+                {visibleCategories.map((categoryName) => {
+                  const items = packingGroups?.[categoryName] ?? [];
+                  const packedCount = items.filter(
+                    (item) => item.packed === "true",
+                  ).length;
 
-                return (
-                  <section
-                    key={categoryName}
-                    className="packing-category-group"
-                  >
-                    <div className="packing-category-heading">
-                      <div>
-                        <strong>{categoryName}</strong>
-                        <span>
-                          {packedCount}/{items.length} packed
-                        </span>
+                  return (
+                    <section
+                      key={categoryName}
+                      className="packing-category-group"
+                    >
+                      <div className="packing-category-heading">
+                        <div>
+                          <strong>{categoryName}</strong>
+                          <span>
+                            {packedCount}/{items.length} packed
+                          </span>
+                        </div>
+
+                        <span>{items.length}</span>
                       </div>
 
-                      <span>{items.length}</span>
-                    </div>
+                      <div className="check-list">
+                        {items.map((item) => {
+                          const isPacked = item.packed === "true";
 
-                    <div className="check-list">
-                      {items.map((item) => {
-                        const isPacked = item.packed === "true";
-
-                        return (
-                          <label
-                            key={item.id}
-                            className={
-                              isPacked ? "packing-item packed" : "packing-item"
-                            }
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isPacked}
-                              onChange={() =>
-                                save("packing", "PATCH", {
-                                  ...item,
-                                  packed: isPacked ? "false" : "true",
-                                })
+                          return (
+                            <label
+                              key={item.id}
+                              className={
+                                isPacked ? "packing-item packed" : "packing-item"
                               }
-                            />
-
-                            <span className="packing-checkbox">
-                              {isPacked ? "✓" : ""}
-                            </span>
-
-                            <span className="packing-item-copy">
-                              <strong>{item.label}</strong>
-                              <i>{item.category}</i>
-                            </span>
-
-                            <span className="packing-item-actions">
-                              <button type="button" onClick={() => edit(item)}>
-                                Edit
-                              </button>
-
-                              <button
-                                type="button"
-                                className="danger"
-                                onClick={() =>
-                                  save("packing", "DELETE", {
-                                    id: item.id,
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isPacked}
+                                onChange={() =>
+                                  save("packing", "PATCH", {
+                                    ...item,
+                                    packed: isPacked ? "false" : "true",
                                   })
                                 }
-                              >
-                                ×
-                              </button>
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </section>
-                );
-              })}
+                              />
+
+                              <span className="packing-checkbox">
+                                {isPacked ? "✓" : ""}
+                              </span>
+
+                              <span className="packing-item-copy">
+                                <strong>{item.label}</strong>
+                                <i>{item.category}</i>
+                              </span>
+
+                              <span className="packing-item-actions">
+                                <button type="button" onClick={() => edit(item)}>
+                                  Edit
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="danger"
+                                  onClick={() =>
+                                    save("packing", "DELETE", {
+                                      id: item.id,
+                                    })
+                                  }
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
             </div>
           ) : (
             <div className="check-list">
@@ -651,33 +653,115 @@ function Packing() {
           flex-direction: column;
         }
 
+        .packing-category-scroll {
+          height: min(64vh, 620px);
+          padding: 0 10px 10px 0;
+          overflow-y: auto;
+          overflow-x: hidden;
+          scrollbar-gutter: stable;
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255, 106, 26, 0.78) rgba(255, 255, 255, 0.04);
+          border-right: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .packing-category-scroll::-webkit-scrollbar {
+          width: 11px;
+        }
+
+        .packing-category-scroll::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.04);
+          border-radius: 999px;
+        }
+
+        .packing-category-scroll::-webkit-scrollbar-thumb {
+          border: 2px solid rgba(255, 255, 255, 0.04);
+          border-radius: 999px;
+          background: linear-gradient(
+            180deg,
+            rgba(255, 185, 128, 0.95),
+            rgba(255, 106, 26, 0.95)
+          );
+        }
+
+        .packing-category-scroll::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(
+            180deg,
+            rgba(255, 205, 160, 1),
+            rgba(255, 120, 38, 1)
+          );
+        }
+
+        .packing-category-groups.grouped {
+          gap: 14px;
+          padding-right: 6px;
+        }
+
+        .packing-category-groups.grouped .check-list {
+          max-height: none;
+          overflow: visible;
+          scrollbar-width: auto;
+          scrollbar-color: initial;
+        }
+
+        .packing-category-groups.grouped .check-list::-webkit-scrollbar,
+        .packing-category-groups.grouped .check-list::-webkit-scrollbar-track,
+        .packing-category-groups.grouped .check-list::-webkit-scrollbar-thumb,
+        .packing-category-groups.grouped .check-list::-webkit-scrollbar-thumb:hover {
+          width: auto;
+          background: initial;
+          border: 0;
+          border-radius: 0;
+        }
+
         .packing-category-group {
-          border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+          margin: 0 0 14px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 16px;
+          overflow: hidden;
+          background: rgba(255, 255, 255, 0.015);
         }
 
         .packing-category-group:last-child {
-          border-bottom: 0;
+          margin-bottom: 0;
         }
 
         .packing-category-heading {
+          position: sticky;
+          top: 0;
+          z-index: 2;
           display: flex;
           align-items: center;
           justify-content: space-between;
           gap: 16px;
-          padding: 14px 20px 12px 26px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-          background: rgba(255, 255, 255, 0.012);
+          padding: 14px 18px 14px 22px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+          background:
+            linear-gradient(180deg, rgba(18, 21, 24, 0.98), rgba(14, 16, 18, 0.96));
+          backdrop-filter: blur(8px);
+        }
+
+        .packing-category-heading::before {
+          content: "";
+          position: absolute;
+          inset: 0 auto 0 0;
+          width: 3px;
+          background: linear-gradient(
+            180deg,
+            rgba(255, 186, 122, 0.95),
+            rgba(255, 106, 26, 0.95)
+          );
         }
 
         .packing-category-heading strong {
           display: block;
           color: #f3f4f5;
-          font-size: 13px;
+          font-size: 14px;
+          font-weight: 800;
           letter-spacing: 0.02em;
         }
 
         .packing-category-heading span {
-          color: #8f989f;
+          color: #9aa2a8;
           font-size: 10px;
           font-weight: 700;
           letter-spacing: 0.08em;
@@ -687,13 +771,13 @@ function Packing() {
         .packing-category-heading > span {
           display: grid;
           place-items: center;
-          min-width: 30px;
-          height: 26px;
+          min-width: 34px;
+          height: 28px;
           padding: 0 8px;
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.09);
           border-radius: 999px;
-          background: rgba(255, 255, 255, 0.03);
-          color: #c8cdd1;
+          background: rgba(255, 255, 255, 0.05);
+          color: #d7dbe0;
           font-size: 11px;
           font-weight: 800;
           letter-spacing: 0;
@@ -703,7 +787,7 @@ function Packing() {
         .packing-category-heading > div {
           display: flex;
           flex-direction: column;
-          gap: 3px;
+          gap: 4px;
         }
 
         .check-list {
@@ -755,6 +839,20 @@ function Packing() {
           transition:
             background 0.18s ease,
             opacity 0.18s ease;
+        }
+
+        .packing-category-group .packing-item {
+          padding-left: 20px;
+          padding-right: 16px;
+          background: rgba(255, 255, 255, 0.01);
+        }
+
+        .packing-category-group .packing-item:nth-child(even) {
+          background: rgba(255, 255, 255, 0.015);
+        }
+
+        .packing-category-group .packing-item:hover {
+          background: rgba(255, 255, 255, 0.03);
         }
 
         .packing-item:last-child {
@@ -1150,12 +1248,40 @@ function Packing() {
             opacity: 1;
           }
 
+          .packing-category-scroll {
+            height: min(54vh, 460px);
+            padding-right: 8px;
+          }
+
+          .packing-category-scroll::-webkit-scrollbar {
+            width: 9px;
+          }
+
           .packing-header-actions {
             width: 100%;
           }
 
           .group-toggle {
             width: 100%;
+          }
+
+          .packing-category-group {
+            margin-bottom: 12px;
+            border-radius: 14px;
+          }
+
+          .packing-category-heading {
+            padding-left: 18px;
+            padding-right: 14px;
+          }
+
+          .packing-category-heading strong {
+            font-size: 13px;
+          }
+
+          .packing-category-group .packing-item {
+            padding-left: 16px;
+            padding-right: 12px;
           }
 
           .packing-form-card {
