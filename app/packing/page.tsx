@@ -221,7 +221,9 @@ function Packing() {
                             <label
                               key={item.id}
                               className={
-                                isPacked ? "packing-item packed" : "packing-item"
+                                isPacked
+                                  ? "packing-item packed"
+                                  : "packing-item"
                               }
                             >
                               <input
@@ -245,7 +247,10 @@ function Packing() {
                               </span>
 
                               <span className="packing-item-actions">
-                                <button type="button" onClick={() => edit(item)}>
+                                <button
+                                  type="button"
+                                  onClick={() => edit(item)}
+                                >
                                   Edit
                                 </button>
 
@@ -706,7 +711,8 @@ function Packing() {
         .packing-category-groups.grouped .check-list::-webkit-scrollbar,
         .packing-category-groups.grouped .check-list::-webkit-scrollbar-track,
         .packing-category-groups.grouped .check-list::-webkit-scrollbar-thumb,
-        .packing-category-groups.grouped .check-list::-webkit-scrollbar-thumb:hover {
+        .packing-category-groups.grouped
+          .check-list::-webkit-scrollbar-thumb:hover {
           width: auto;
           background: initial;
           border: 0;
@@ -735,8 +741,11 @@ function Packing() {
           gap: 16px;
           padding: 14px 18px 14px 22px;
           border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-          background:
-            linear-gradient(180deg, rgba(18, 21, 24, 0.98), rgba(14, 16, 18, 0.96));
+          background: linear-gradient(
+            180deg,
+            rgba(18, 21, 24, 0.98),
+            rgba(14, 16, 18, 0.96)
+          );
           backdrop-filter: blur(8px);
         }
 
