@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const url = new URL(NOMINATIM_URL);
     url.searchParams.set("q", query);
     url.searchParams.set("format", "jsonv2");
-    url.searchParams.set("limit", "1");
+    url.searchParams.set("limit", "3");
     url.searchParams.set("countrycodes", "in");
 
     const response = await fetch(url.toString(), {
@@ -52,13 +52,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const result = results[0];
-
     return NextResponse.json({
       query,
-      latitude: Number(result.lat),
-      longitude: Number(result.lon),
-      displayName: result.display_name,
+      results: results.slice(0, 3).map((result) => ({
+        latitude: Number(result.lat),
+        longitude: Number(result.lon),
+        displayName: result.display_name,
+      })),
     });
   } catch {
     return NextResponse.json(

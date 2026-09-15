@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { PageState } from "@/components/page-state";
 import { useTrip } from "@/components/trip-provider";
 import type { ItineraryItem, RoadbookStop } from "@/lib/types";
@@ -16,6 +16,9 @@ type GeocodedLocation = {
   latitude: number;
   longitude: number;
   displayName: string;
+};
+type GeocodeResponse = {
+  results: GeocodedLocation[];
 };
 type GeocodeCache = Record<string, GeocodedLocation>;
 type MapStop = {
@@ -61,10 +64,64 @@ function Itinerary() {
   const [geocodedStops, setGeocodedStops] = useState<GeocodeCache>({});
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState("");
+  const [destinationSuggestions, setDestinationSuggestions] = useState<GeocodedLocation[]>([]);
+  const [destinationSearchBusy, setDestinationSearchBusy] = useState(false);
+  const selectedDestinationRef = useRef("");
   const [activeMapDay, setActiveMapDay] = useState<string | null>(null);
   const [geocodedRoadbookStops, setGeocodedRoadbookStops] = useState<MapStop[]>(
     [],
   );
+  useEffect(() => {
+    const query = draft.to.trim();
+
+    if (mode !== "add" && mode !== "edit") {
+      setDestinationSuggestions([]);
+      return;
+    }
+
+    if (selectedDestinationRef.current === query) {
+      selectedDestinationRef.current = "";
+      setDestinationSuggestions([]);
+      return;
+    }
+
+    if (query.length < 2) {
+      setDestinationSuggestions([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      try {
+        setDestinationSearchBusy(true);
+        const response = await fetch(
+          `/api/geocode?q=${encodeURIComponent(query)}`,
+          { signal: controller.signal },
+        );
+
+        if (!response.ok) {
+          setDestinationSuggestions([]);
+          return;
+        }
+
+        const result = (await response.json()) as GeocodeResponse;
+        setDestinationSuggestions(result.results.slice(0, 3));
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          setDestinationSuggestions([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setDestinationSearchBusy(false);
+        }
+      }
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [draft.to, mode]);
   useEffect(() => {
     const date =
       data?.itinerary.find((item) => item.date)?.date || data?.trip.startDate;
@@ -328,7 +385,10 @@ function Itinerary() {
         return null;
       }
 
-      const result = (await response.json()) as GeocodedLocation;
+      const payload = (await response.json()) as GeocodeResponse;
+      const result = payload.results[0];
+
+      if (!result) return null;
 
       setGeocodedStops((current) => ({
         ...current,
@@ -883,6 +943,42 @@ function Itinerary() {
         }
         .data-form .wide {
           grid-column: 1/-1;
+        }
+        .destination-search {
+          position: relative;
+        }
+        .destination-suggestions {
+          position: absolute;
+          z-index: 5;
+          top: calc(100% + 4px);
+          left: 0;
+          right: 0;
+          overflow: hidden;
+          border: 1px solid var(--rb-line);
+          border-radius: 9px;
+          background: #171b1f;
+          box-shadow: 0 16px 35px rgba(0, 0, 0, 0.35);
+        }
+        .destination-suggestions button,
+        .destination-search-status {
+          display: block;
+          width: 100%;
+          padding: 10px 12px;
+          border: 0;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+          background: transparent;
+          color: #e3e6e8;
+          font-size: 12px;
+          line-height: 1.35;
+          text-align: left;
+        }
+        .destination-suggestions button:hover {
+          background: var(--rb-accent-soft);
+          color: #fff;
+        }
+        .destination-suggestions button:last-child,
+        .destination-search-status:last-child {
+          border-bottom: 0;
         }
         .modal-actions {
           display: flex;
@@ -1718,13 +1814,44 @@ function Itinerary() {
                   </label>
                   <label>
                     To
-                    <input
-                      required
-                      value={draft.to}
-                      onChange={(e) =>
-                        setDraft({ ...draft, to: e.target.value })
-                      }
-                    />
+                    <div className="destination-search">
+                      <input
+                        required
+                        value={draft.to}
+                        autoComplete="off"
+                        onChange={(e) => {
+                          selectedDestinationRef.current = "";
+                          setDraft({ ...draft, to: e.target.value });
+                        }}
+                      />
+                      {(destinationSearchBusy || destinationSuggestions.length > 0) && (
+                        <div className="destination-suggestions" role="listbox">
+                          {destinationSearchBusy && (
+                            <span className="destination-search-status">Searching…</span>
+                          )}
+                          {destinationSuggestions.map((suggestion) => (
+                            <button
+                              type="button"
+                              key={`${suggestion.latitude}-${suggestion.longitude}`}
+                              role="option"
+                              onMouseDown={(event) => {
+                                event.preventDefault();
+                                const key = suggestion.displayName.trim().toLowerCase();
+                                selectedDestinationRef.current = suggestion.displayName;
+                                setDraft({ ...draft, to: suggestion.displayName });
+                                setGeocodedStops((current) => ({
+                                  ...current,
+                                  [key]: suggestion,
+                                }));
+                                setDestinationSuggestions([]);
+                              }}
+                            >
+                              {suggestion.displayName}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </label>
                   <label>
                     Distance (km)
