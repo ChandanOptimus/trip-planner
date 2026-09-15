@@ -77,7 +77,7 @@ function strings(body: unknown) {
 }
 function validate(collection: CollectionName, body: Record<string, string>) {
   const required = fields[collection].filter(
-    (field) => !["notes", "date", "sortOrder"].includes(field),
+    (field) => !["id", "notes", "date", "sortOrder"].includes(field),
   );
   if (required.some((field) => !body[field]?.trim()))
     throw new Error(
@@ -109,12 +109,14 @@ export async function POST(
       );
     }
 
-    validate(collection, body);
-
-    await createRow(collection, {
-      id: crypto.randomUUID(),
+    const payload = {
       ...body,
-    });
+      id: body.id?.trim() || crypto.randomUUID(),
+    };
+
+    validate(collection, payload);
+
+    await createRow(collection, payload);
 
     return NextResponse.json({ ok: true });
   } catch (error) {

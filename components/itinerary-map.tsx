@@ -43,27 +43,29 @@ type Props = {
 };
 function createMapIcon(type: MapStopType, number?: number) {
   const icons: Record<MapStopType, string> = {
-    start: "START",
-    end: "END",
-    fuel: "F",
-    food: "FOOD",
-    sightseeing: "VIEW",
-    stay: "STAY",
+    start:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.8 5.7L21 9.6l-4.5 4.4 1.1 6.3L12 17.3l-5.6 3 1.1-6.3L3 9.6l6.2-.9L12 3z"/></svg>',
+    end: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h2v16H7V4zm3 1h8l-2.2 3L18 11h-8V5z"/></svg>',
+    fuel: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h8v15H7V4zm2 2v4h4V6H9zm8 1h2l2 2v8a3 3 0 01-3 3h-1v-2h1a1 1 0 001-1v-2h-2V9l-1-1V7z"/></svg>',
+    food: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h2v7a2 2 0 01-2 2v9H5v-9a2 2 0 01-2-2V3h2v4h2V3zm6 0h2v8h2V3h2v8a2 2 0 01-2 2h-1v8h-2v-8h-1a2 2 0 01-2-2V3z"/></svg>',
+    sightseeing:
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5a7 7 0 017 7v6h-2v-3.2L14 12l-3 3-3-3-3 2.8V18H3v-6a7 7 0 017-7h2zm0-2a2 2 0 110 4 2 2 0 010-4z"/></svg>',
+    stay: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18v8h-2v-2H5v2H3v-8zm3-5h4a3 3 0 013 3v2H6V7zm9 2h3a3 3 0 013 3v0h-6V9z"/></svg>',
   };
 
   const label = icons[type];
+  const hasNumber = typeof number === "number";
 
   return L.divIcon({
-    className: `roadbook-map-marker roadbook-map-marker-${type}`,
+    className: `roadbook-map-marker roadbook-map-marker-${type}${hasNumber ? " has-number" : ""}`,
     html: `
       <div class="roadbook-map-marker-inner">
-        ${number ? `<span class="roadbook-marker-number">${number}</span>` : ""}
-        <span class="roadbook-marker-label">${label}</span>
+        ${hasNumber ? `<span class="roadbook-marker-number">${number}</span>` : `<span class="roadbook-marker-glyph">${label}</span>`}
       </div>
     `,
-    iconSize: [48, 34],
-    iconAnchor: [24, 17],
-    popupAnchor: [0, -18],
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -14],
   });
 }
 

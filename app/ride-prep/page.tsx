@@ -365,13 +365,13 @@ function RidePrep() {
 
           <form
             className="data-form"
-           onSubmit={async (e) => {
-  e.preventDefault();
+            onSubmit={async (e) => {
+              e.preventDefault();
 
-  if (await save("trip", "POST", trip)) {
-    setSettings(null);
-  }
-}}
+              if (await save("trip", "POST", trip)) {
+                setSettings(null);
+              }
+            }}
           >
             <label className="date-field">
               Trip start
@@ -695,6 +695,38 @@ function RidePrep() {
         .prep-check-list {
           display: flex;
           flex-direction: column;
+          max-height: 340px;
+          overflow-y: auto;
+          scrollbar-gutter: stable;
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255, 106, 26, 0.75) rgba(255, 255, 255, 0.04);
+        }
+
+        .prep-check-list::-webkit-scrollbar {
+          width: 10px;
+        }
+
+        .prep-check-list::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.04);
+          border-radius: 999px;
+        }
+
+        .prep-check-list::-webkit-scrollbar-thumb {
+          border: 2px solid rgba(255, 255, 255, 0.04);
+          border-radius: 999px;
+          background: linear-gradient(
+            180deg,
+            rgba(255, 158, 92, 0.95),
+            rgba(255, 106, 26, 0.9)
+          );
+        }
+
+        .prep-check-list::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(
+            180deg,
+            rgba(255, 185, 128, 1),
+            rgba(255, 120, 38, 1)
+          );
         }
 
         .prep-item {
@@ -850,6 +882,38 @@ function RidePrep() {
         .notes-list {
           display: flex;
           flex-direction: column;
+          max-height: 320px;
+          overflow-y: auto;
+          scrollbar-gutter: stable;
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255, 106, 26, 0.75) rgba(255, 255, 255, 0.04);
+        }
+
+        .notes-list::-webkit-scrollbar {
+          width: 10px;
+        }
+
+        .notes-list::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.04);
+          border-radius: 999px;
+        }
+
+        .notes-list::-webkit-scrollbar-thumb {
+          border: 2px solid rgba(255, 255, 255, 0.04);
+          border-radius: 999px;
+          background: linear-gradient(
+            180deg,
+            rgba(255, 158, 92, 0.95),
+            rgba(255, 106, 26, 0.9)
+          );
+        }
+
+        .notes-list::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(
+            180deg,
+            rgba(255, 185, 128, 1),
+            rgba(255, 120, 38, 1)
+          );
         }
 
         .note-item {
@@ -1110,6 +1174,14 @@ function RidePrep() {
           .note-form .button {
             width: 100%;
           }
+
+          .prep-check-list {
+            max-height: 280px;
+          }
+
+          .notes-list {
+            max-height: 260px;
+          }
         }
 
         @media (max-width: 600px) {
@@ -1157,8 +1229,21 @@ function RidePrep() {
             padding: 18px 20px 0;
           }
 
+          .prep-check-list {
+            max-height: 240px;
+          }
+
+          .notes-list {
+            max-height: 220px;
+          }
+
           .prep-settings-card {
             padding: 22px;
+          }
+
+          .prep-check-list::-webkit-scrollbar,
+          .notes-list::-webkit-scrollbar {
+            width: 8px;
           }
         }
         .date-field input[type="date"] {

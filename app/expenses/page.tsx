@@ -20,7 +20,7 @@ function Expenses() {
 
   const total = data.expenses.reduce(
     (sum, item) => sum + Number(item.amount || 0),
-    0
+    0,
   );
 
   const budget = Number(data.trip.totalBudget || 0);
@@ -32,10 +32,9 @@ function Expenses() {
   const byCategory = data.expenses.reduce<Record<string, number>>(
     (all, item) => ({
       ...all,
-      [item.category]:
-        (all[item.category] || 0) + Number(item.amount || 0),
+      [item.category]: (all[item.category] || 0) + Number(item.amount || 0),
     }),
-    {}
+    {},
   );
 
   const add = async (event: FormEvent) => {
@@ -46,7 +45,7 @@ function Expenses() {
     }
   };
 
-  const edit = (item: typeof data.expenses[number]) => {
+  const edit = (item: (typeof data.expenses)[number]) => {
     const label = window.prompt("What did you pay for?", item.label);
     const amount = window.prompt("Amount", item.amount);
     const category = window.prompt("Category", item.category);
@@ -79,9 +78,7 @@ function Expenses() {
         <div className="expense-hero-total">
           <span className="eyebrow">TOTAL SPENT</span>
 
-          <strong>
-            ₹{total.toLocaleString("en-IN")}
-          </strong>
+          <strong>₹{total.toLocaleString("en-IN")}</strong>
 
           <span>
             {data.expenses.length}{" "}
@@ -94,9 +91,7 @@ function Expenses() {
         <article>
           <span className="expense-stat-label">SPENT</span>
           <strong>₹{total.toLocaleString("en-IN")}</strong>
-          <small>
-            {budgetPct}% of budget
-          </small>
+          <small>{budgetPct}% of budget</small>
         </article>
 
         <article>
@@ -125,19 +120,13 @@ function Expenses() {
                 <h2>How the trip is spending</h2>
               </div>
 
-              <span className="spend-percent">
-                {budgetPct}%
-              </span>
+              <span className="spend-percent">{budgetPct}%</span>
             </div>
 
             <div className="spend-money">
-              <strong>
-                ₹{total.toLocaleString("en-IN")}
-              </strong>
+              <strong>₹{total.toLocaleString("en-IN")}</strong>
 
-              <span>
-                of ₹{budget.toLocaleString("en-IN")}
-              </span>
+              <span>of ₹{budget.toLocaleString("en-IN")}</span>
             </div>
 
             <div className="spend-meter">
@@ -164,37 +153,30 @@ function Expenses() {
               </div>
 
               <div className="category-grid">
-                {Object.entries(byCategory).map(
-                  ([category, amount]) => {
-                    const categoryPct = total
-                      ? Math.round((amount / total) * 100)
-                      : 0;
+                {Object.entries(byCategory).map(([category, amount]) => {
+                  const categoryPct = total
+                    ? Math.round((amount / total) * 100)
+                    : 0;
 
-                    return (
-                      <article
-                        key={category}
-                        className="category-item"
-                      >
-                        <div className="category-item-top">
-                          <span>{category}</span>
-                          <strong>
-                            ₹{amount.toLocaleString("en-IN")}
-                          </strong>
-                        </div>
+                  return (
+                    <article key={category} className="category-item">
+                      <div className="category-item-top">
+                        <span>{category}</span>
+                        <strong>₹{amount.toLocaleString("en-IN")}</strong>
+                      </div>
 
-                        <div className="category-meter">
-                          <i
-                            style={{
-                              width: `${categoryPct}%`,
-                            }}
-                          />
-                        </div>
+                      <div className="category-meter">
+                        <i
+                          style={{
+                            width: `${categoryPct}%`,
+                          }}
+                        />
+                      </div>
 
-                        <small>{categoryPct}% of total spend</small>
-                      </article>
-                    );
-                  }
-                )}
+                      <small>{categoryPct}% of total spend</small>
+                    </article>
+                  );
+                })}
               </div>
             </article>
           )}
@@ -206,9 +188,7 @@ function Expenses() {
                 <h2>Every rupee has a story.</h2>
               </div>
 
-              <span className="expense-count">
-                {data.expenses.length}
-              </span>
+              <span className="expense-count">{data.expenses.length}</span>
             </div>
 
             {data.expenses.length === 0 ? (
@@ -216,20 +196,14 @@ function Expenses() {
                 <span>₹</span>
                 <strong>No expenses logged yet</strong>
                 <p>
-                  Your fuel stops, meals and other trip costs
-                  will appear here.
+                  Your fuel stops, meals and other trip costs will appear here.
                 </p>
               </div>
             ) : (
               <div className="expense-list">
                 {data.expenses.map((item) => (
-                  <article
-                    key={item.id}
-                    className="expense-row"
-                  >
-                    <div className="expense-row-icon">
-                      ₹
-                    </div>
+                  <article key={item.id} className="expense-row">
+                    <div className="expense-row-icon">₹</div>
 
                     <div className="expense-row-copy">
                       <strong>{item.label}</strong>
@@ -252,10 +226,7 @@ function Expenses() {
                     </strong>
 
                     <div className="expense-row-actions">
-                      <button
-                        type="button"
-                        onClick={() => edit(item)}
-                      >
+                      <button type="button" onClick={() => edit(item)}>
                         Edit
                       </button>
 
@@ -284,8 +255,7 @@ function Expenses() {
           <h2>Log a cost.</h2>
 
           <p>
-            Add every stop along the way. Small costs become
-            useful trip data.
+            Add every stop along the way. Small costs become useful trip data.
           </p>
 
           <form onSubmit={add} className="data-form">
@@ -386,8 +356,7 @@ function Expenses() {
           min-height: 270px;
           padding: 42px;
           margin-bottom: 18px;
-          border: 1px solid
-            var(--rb-line, rgba(255, 255, 255, 0.09));
+          border: 1px solid var(--rb-line, rgba(255, 255, 255, 0.09));
           border-radius: 24px;
           background:
             radial-gradient(
@@ -466,8 +435,7 @@ function Expenses() {
           grid-template-columns: repeat(3, 1fr);
           margin-bottom: 18px;
           overflow: hidden;
-          border: 1px solid
-            var(--rb-line, rgba(255, 255, 255, 0.09));
+          border: 1px solid var(--rb-line, rgba(255, 255, 255, 0.09));
           border-radius: 18px;
           background: var(--rb-panel, #101316);
         }
@@ -475,8 +443,7 @@ function Expenses() {
         .expense-stats article {
           min-height: 105px;
           padding: 22px 26px;
-          border-right: 1px solid
-            rgba(255, 255, 255, 0.07);
+          border-right: 1px solid rgba(255, 255, 255, 0.07);
         }
 
         .expense-stats article:last-child {
@@ -523,8 +490,7 @@ function Expenses() {
         .category-card,
         .expenses-list-card,
         .expense-form-card {
-          border: 1px solid
-            var(--rb-line, rgba(255, 255, 255, 0.09));
+          border: 1px solid var(--rb-line, rgba(255, 255, 255, 0.09));
           border-radius: 20px;
           background: var(--rb-panel, #101316);
         }
@@ -594,8 +560,7 @@ function Expenses() {
           min-width: 0;
           border-radius: inherit;
           background: var(--rb-accent, #ff6a1a);
-          box-shadow: 0 0 18px
-            rgba(255, 106, 26, 0.3);
+          box-shadow: 0 0 18px rgba(255, 106, 26, 0.3);
         }
 
         .spend-meter-foot {
@@ -620,8 +585,7 @@ function Expenses() {
 
         .category-item {
           padding: 16px;
-          border: 1px solid
-            rgba(255, 255, 255, 0.07);
+          border: 1px solid rgba(255, 255, 255, 0.07);
           border-radius: 12px;
           background: rgba(255, 255, 255, 0.018);
         }
@@ -673,8 +637,7 @@ function Expenses() {
 
         .expenses-list-card > .section-heading {
           padding: 28px 30px 22px;
-          border-bottom: 1px solid
-            rgba(255, 255, 255, 0.07);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.07);
         }
 
         .expense-count {
@@ -692,6 +655,38 @@ function Expenses() {
         .expense-list {
           display: flex;
           flex-direction: column;
+          max-height: 340px;
+          overflow-y: auto;
+          scrollbar-gutter: stable;
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255, 106, 26, 0.75) rgba(255, 255, 255, 0.04);
+        }
+
+        .expense-list::-webkit-scrollbar {
+          width: 10px;
+        }
+
+        .expense-list::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.04);
+          border-radius: 999px;
+        }
+
+        .expense-list::-webkit-scrollbar-thumb {
+          border: 2px solid rgba(255, 255, 255, 0.04);
+          border-radius: 999px;
+          background: linear-gradient(
+            180deg,
+            rgba(255, 158, 92, 0.95),
+            rgba(255, 106, 26, 0.9)
+          );
+        }
+
+        .expense-list::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(
+            180deg,
+            rgba(255, 185, 128, 1),
+            rgba(255, 120, 38, 1)
+          );
         }
 
         .expense-row {
@@ -701,8 +696,7 @@ function Expenses() {
           gap: 14px;
           min-height: 72px;
           padding: 12px 20px 12px 24px;
-          border-bottom: 1px solid
-            rgba(255, 255, 255, 0.055);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.055);
           transition: background 0.18s ease;
         }
 
@@ -862,8 +856,7 @@ function Expenses() {
 
         .expense-form-card .data-form input:focus {
           border-color: rgba(255, 106, 26, 0.65);
-          box-shadow: 0 0 0 3px
-            rgba(255, 106, 26, 0.08);
+          box-shadow: 0 0 0 3px rgba(255, 106, 26, 0.08);
         }
 
         .expense-form-card .data-form .button {
@@ -936,8 +929,7 @@ function Expenses() {
           .expense-stats article {
             min-height: auto;
             border-right: 0;
-            border-bottom: 1px solid
-              rgba(255, 255, 255, 0.07);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
           }
 
           .expense-stats article:last-child {
@@ -995,6 +987,14 @@ function Expenses() {
           .expense-form-card .data-form label.wide,
           .expense-form-card .data-form .button {
             grid-column: auto;
+          }
+
+          .expense-list {
+            max-height: 240px;
+          }
+
+          .expense-list::-webkit-scrollbar {
+            width: 8px;
           }
         }
       `}</style>

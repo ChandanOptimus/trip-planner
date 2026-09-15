@@ -1,26 +1,78 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { PageState } from "@/components/page-state";
 import { useTrip } from "@/components/trip-provider";
+
+const packingCategories = [
+  "Ride Gear",
+  "Clothing",
+  "Camping",
+  "Toiletries",
+  "Electronics",
+  "Documents",
+  "Medicines",
+  "Tools",
+  "Food",
+  "Misc",
+] as const;
+
+const defaultCategory = packingCategories[0];
 
 function Packing() {
   const { data, save } = useTrip();
 
   const [label, setLabel] = useState("");
-  const [category, setCategory] = useState("Ride");
+  const [category, setCategory] = useState(defaultCategory);
+  const [groupByCategory, setGroupByCategory] = useState(false);
+  const [editingItem, setEditingItem] = useState<
+    (typeof data.packing)[number] | null
+  >(null);
+  const [editingLabel, setEditingLabel] = useState("");
+  const [editingCategory, setEditingCategory] = useState(defaultCategory);
 
   if (!data) return null;
 
-  const packed = data.packing.filter(
-    (item) => item.packed === "true"
-  ).length;
+  useEffect(() => {
+    if (!editingItem) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setEditingItem(null);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [editingItem]);
+
+  const packed = data.packing.filter((item) => item.packed === "true").length;
 
   const total = data.packing.length;
   const remaining = total - packed;
-  const packingPct = total
-    ? Math.round((packed / total) * 100)
-    : 0;
+  const packingPct = total ? Math.round((packed / total) * 100) : 0;
+
+  const packingGroups = groupByCategory
+    ? data.packing.reduce<Record<string, typeof data.packing>>(
+        (groups, item) => {
+          const key = item.category || "Uncategorized";
+
+          if (!groups[key]) {
+            groups[key] = [];
+          }
+
+          groups[key].push(item);
+
+          return groups;
+        },
+        {},
+      )
+    : null;
+  const visibleCategories = groupByCategory
+    ? Object.keys(packingGroups || {}).sort((left, right) =>
+        left.localeCompare(right),
+      )
+    : [];
 
   const add = async (e: FormEvent) => {
     e.preventDefault();
@@ -37,18 +89,32 @@ function Packing() {
     }
   };
 
-  const edit = (item: typeof data.packing[number]) => {
-    const nextLabel = window.prompt("Item name", item.label);
-    if (!nextLabel) return;
+  const edit = (item: (typeof data.packing)[number]) => {
+    setEditingItem(item);
+    setEditingLabel(item.label);
+    setEditingCategory(item.category || defaultCategory);
+  };
 
-    const nextCategory = window.prompt("Category", item.category);
-    if (!nextCategory) return;
+  const closeEditor = () => {
+    setEditingItem(null);
+    setEditingLabel("");
+    setEditingCategory(defaultCategory);
+  };
 
-    void save("packing", "PATCH", {
-      ...item,
-      label: nextLabel,
-      category: nextCategory,
+  const submitEdit = async (event: FormEvent) => {
+    event.preventDefault();
+
+    if (!editingItem) return;
+
+    const ok = await save("packing", "PATCH", {
+      ...editingItem,
+      label: editingLabel,
+      category: editingCategory,
     });
+
+    if (ok) {
+      closeEditor();
+    }
   };
 
   return (
@@ -56,10 +122,10 @@ function Packing() {
       <section className="packing-hero">
         <div>
           <p className="eyebrow">PRE-RIDE CHECKLIST</p>
-          <h1>Pack for the <em>road.</em></h1>
-          <p className="lead">
-            Everything you need before the wheels roll.
-          </p>
+          <h1>
+            Pack for the <em>road.</em>
+          </h1>
+          <p className="lead">Everything you need before the wheels roll.</p>
         </div>
 
         <div className="packing-readiness">
@@ -99,9 +165,21 @@ function Packing() {
               <h2>What’s going in the bag</h2>
             </div>
 
-            <span className="packing-count">
-              {packed}/{total}
-            </span>
+            <div className="packing-header-actions">
+              <button
+                type="button"
+                className={
+                  groupByCategory ? "group-toggle active" : "group-toggle"
+                }
+                onClick={() => setGroupByCategory((current) => !current)}
+              >
+                {groupByCategory ? "Flat view" : "Group by category"}
+              </button>
+
+              <span className="packing-count">
+                {packed}/{total}
+              </span>
+            </div>
           </div>
 
           {data.packing.length === 0 ? (
@@ -109,6 +187,86 @@ function Packing() {
               <span>＋</span>
               <strong>Your bag is empty</strong>
               <p>Add your first item using the panel on the right.</p>
+            </div>
+          ) : groupByCategory ? (
+            <div className="packing-category-groups">
+              {visibleCategories.map((categoryName) => {
+                const items = packingGroups?.[categoryName] ?? [];
+                const packedCount = items.filter(
+                  (item) => item.packed === "true",
+                ).length;
+
+                return (
+                  <section
+                    key={categoryName}
+                    className="packing-category-group"
+                  >
+                    <div className="packing-category-heading">
+                      <div>
+                        <strong>{categoryName}</strong>
+                        <span>
+                          {packedCount}/{items.length} packed
+                        </span>
+                      </div>
+
+                      <span>{items.length}</span>
+                    </div>
+
+                    <div className="check-list">
+                      {items.map((item) => {
+                        const isPacked = item.packed === "true";
+
+                        return (
+                          <label
+                            key={item.id}
+                            className={
+                              isPacked ? "packing-item packed" : "packing-item"
+                            }
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isPacked}
+                              onChange={() =>
+                                save("packing", "PATCH", {
+                                  ...item,
+                                  packed: isPacked ? "false" : "true",
+                                })
+                              }
+                            />
+
+                            <span className="packing-checkbox">
+                              {isPacked ? "✓" : ""}
+                            </span>
+
+                            <span className="packing-item-copy">
+                              <strong>{item.label}</strong>
+                              <i>{item.category}</i>
+                            </span>
+
+                            <span className="packing-item-actions">
+                              <button type="button" onClick={() => edit(item)}>
+                                Edit
+                              </button>
+
+                              <button
+                                type="button"
+                                className="danger"
+                                onClick={() =>
+                                  save("packing", "DELETE", {
+                                    id: item.id,
+                                  })
+                                }
+                              >
+                                ×
+                              </button>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })}
             </div>
           ) : (
             <div className="check-list">
@@ -118,7 +276,9 @@ function Packing() {
                 return (
                   <label
                     key={item.id}
-                    className={isPacked ? "packing-item packed" : "packing-item"}
+                    className={
+                      isPacked ? "packing-item packed" : "packing-item"
+                    }
                   >
                     <input
                       type="checkbox"
@@ -141,10 +301,7 @@ function Packing() {
                     </span>
 
                     <span className="packing-item-actions">
-                      <button
-                        type="button"
-                        onClick={() => edit(item)}
-                      >
+                      <button type="button" onClick={() => edit(item)}>
                         Edit
                       </button>
 
@@ -171,8 +328,8 @@ function Packing() {
           <p className="eyebrow">ADD TO LOADOUT</p>
           <h2>Pack something new.</h2>
           <p>
-            Keep the checklist simple. Add the things that matter
-            once the ride begins.
+            Keep the checklist simple. Add the things that matter once the ride
+            begins.
           </p>
 
           <form onSubmit={add} className="data-form">
@@ -188,11 +345,16 @@ function Packing() {
 
             <label>
               Category
-              <input
+              <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                placeholder="Ride"
-              />
+              >
+                {packingCategories.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
             </label>
 
             <button className="button" type="submit">
@@ -201,6 +363,72 @@ function Packing() {
           </form>
         </aside>
       </div>
+
+      {editingItem && (
+        <div className="packing-modal-backdrop" onClick={closeEditor}>
+          <div
+            className="packing-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="packing-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="packing-modal-header">
+              <div>
+                <p className="eyebrow">EDIT ITEM</p>
+                <h2 id="packing-modal-title">Update packing item</h2>
+              </div>
+
+              <button
+                type="button"
+                className="packing-modal-close"
+                onClick={closeEditor}
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={submitEdit} className="packing-modal-form">
+              <label>
+                Item name
+                <input
+                  required
+                  value={editingLabel}
+                  onChange={(e) => setEditingLabel(e.target.value)}
+                />
+              </label>
+
+              <label>
+                Category
+                <select
+                  value={editingCategory}
+                  onChange={(e) => setEditingCategory(e.target.value)}
+                >
+                  {packingCategories.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="packing-modal-foot">
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={closeEditor}
+                >
+                  Cancel
+                </button>
+
+                <button className="button" type="submit">
+                  Save changes <span>→</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <style jsx global>{`
         .packing-page {
@@ -282,11 +510,10 @@ function Packing() {
           height: 112px;
           flex: 0 0 112px;
           border-radius: 50%;
-          background:
-            conic-gradient(
-              var(--rb-accent, #ff6a1a) var(--progress),
-              rgba(255, 255, 255, 0.08) 0deg
-            );
+          background: conic-gradient(
+            var(--rb-accent, #ff6a1a) var(--progress),
+            rgba(255, 255, 255, 0.08) 0deg
+          );
         }
 
         .packing-ring::before {
@@ -387,9 +614,133 @@ function Packing() {
           font-weight: 800;
         }
 
+        .packing-header-actions {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+
+        .group-toggle {
+          height: 32px;
+          padding: 0 12px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.03);
+          color: #aeb5ba;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.06em;
+          cursor: pointer;
+          transition:
+            background 0.18s ease,
+            border-color 0.18s ease,
+            color 0.18s ease;
+        }
+
+        .group-toggle:hover,
+        .group-toggle.active {
+          border-color: rgba(255, 106, 26, 0.35);
+          background: rgba(255, 106, 26, 0.08);
+          color: var(--rb-accent, #ff6a1a);
+        }
+
+        .packing-category-groups {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .packing-category-group {
+          border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+        }
+
+        .packing-category-group:last-child {
+          border-bottom: 0;
+        }
+
+        .packing-category-heading {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 14px 20px 12px 26px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+          background: rgba(255, 255, 255, 0.012);
+        }
+
+        .packing-category-heading strong {
+          display: block;
+          color: #f3f4f5;
+          font-size: 13px;
+          letter-spacing: 0.02em;
+        }
+
+        .packing-category-heading span {
+          color: #8f989f;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .packing-category-heading > span {
+          display: grid;
+          place-items: center;
+          min-width: 30px;
+          height: 26px;
+          padding: 0 8px;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.03);
+          color: #c8cdd1;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0;
+          text-transform: none;
+        }
+
+        .packing-category-heading > div {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+
         .check-list {
           display: flex;
           flex-direction: column;
+          max-height: 340px;
+          overflow-y: auto;
+          scrollbar-gutter: stable;
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255, 106, 26, 0.75) rgba(255, 255, 255, 0.04);
+        }
+
+        .check-list::-webkit-scrollbar {
+          width: 10px;
+        }
+
+        .check-list::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.04);
+          border-radius: 999px;
+        }
+
+        .check-list::-webkit-scrollbar-thumb {
+          border: 2px solid rgba(255, 255, 255, 0.04);
+          border-radius: 999px;
+          background: linear-gradient(
+            180deg,
+            rgba(255, 158, 92, 0.95),
+            rgba(255, 106, 26, 0.9)
+          );
+        }
+
+        .check-list::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(
+            180deg,
+            rgba(255, 185, 128, 1),
+            rgba(255, 120, 38, 1)
+          );
         }
 
         .packing-item {
@@ -545,7 +896,8 @@ function Packing() {
           text-transform: uppercase;
         }
 
-        .packing-form-card .data-form input {
+        .packing-form-card .data-form input,
+        .packing-form-card .data-form select {
           width: 100%;
           box-sizing: border-box;
           margin-top: 7px;
@@ -562,7 +914,13 @@ function Packing() {
             box-shadow 0.18s ease;
         }
 
-        .packing-form-card .data-form input:focus {
+        .packing-form-card .data-form select {
+          appearance: none;
+          cursor: pointer;
+        }
+
+        .packing-form-card .data-form input:focus,
+        .packing-form-card .data-form select:focus {
           border-color: rgba(255, 106, 26, 0.65);
           box-shadow: 0 0 0 3px rgba(255, 106, 26, 0.08);
         }
@@ -571,6 +929,134 @@ function Packing() {
           justify-content: center;
           width: 100%;
           margin-top: 3px;
+        }
+
+        .packing-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 50;
+          display: grid;
+          place-items: center;
+          padding: 20px;
+          background: rgba(5, 7, 10, 0.72);
+          backdrop-filter: blur(10px);
+        }
+
+        .packing-modal {
+          width: min(520px, 100%);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 22px;
+          background:
+            radial-gradient(
+              circle at 100% 0,
+              rgba(255, 106, 26, 0.1),
+              transparent 42%
+            ),
+            #101316;
+          box-shadow: 0 24px 80px rgba(0, 0, 0, 0.48);
+          overflow: hidden;
+        }
+
+        .packing-modal-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 20px;
+          padding: 26px 26px 18px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+        }
+
+        .packing-modal-header h2 {
+          margin: 6px 0 0;
+          font-size: 24px;
+          letter-spacing: -0.03em;
+        }
+
+        .packing-modal-close {
+          width: 36px;
+          height: 36px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.03);
+          color: #e9ebed;
+          font-size: 20px;
+          line-height: 1;
+          cursor: pointer;
+        }
+
+        .packing-modal-close:hover {
+          border-color: rgba(255, 106, 26, 0.4);
+          background: rgba(255, 106, 26, 0.08);
+          color: var(--rb-accent, #ff6a1a);
+        }
+
+        .packing-modal-form {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          padding: 22px 26px 26px;
+        }
+
+        .packing-modal-form label {
+          color: #aeb5ba;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .packing-modal-form input,
+        .packing-modal-form select {
+          width: 100%;
+          box-sizing: border-box;
+          margin-top: 7px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+          outline: none;
+          background: #0b0e10;
+          color: #f3f4f5;
+          padding: 12px 13px;
+          font: inherit;
+          font-size: 13px;
+          transition:
+            border-color 0.18s ease,
+            box-shadow 0.18s ease;
+        }
+
+        .packing-modal-form select {
+          appearance: none;
+          cursor: pointer;
+        }
+
+        .packing-modal-form input:focus,
+        .packing-modal-form select:focus {
+          border-color: rgba(255, 106, 26, 0.65);
+          box-shadow: 0 0 0 3px rgba(255, 106, 26, 0.08);
+        }
+
+        .packing-modal-foot {
+          display: flex;
+          justify-content: flex-end;
+          gap: 10px;
+          margin-top: 4px;
+        }
+
+        .ghost-button {
+          min-height: 42px;
+          padding: 0 16px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 999px;
+          background: transparent;
+          color: #c8cdd1;
+          font: inherit;
+          font-size: 12px;
+          font-weight: 800;
+          cursor: pointer;
+        }
+
+        .ghost-button:hover {
+          border-color: rgba(255, 106, 26, 0.35);
+          color: var(--rb-accent, #ff6a1a);
         }
 
         .packing-empty {
@@ -625,6 +1111,10 @@ function Packing() {
           .packing-form-card {
             order: -1;
           }
+
+          .packing-header-actions {
+            justify-content: flex-start;
+          }
         }
 
         @media (max-width: 600px) {
@@ -641,7 +1131,17 @@ function Packing() {
             padding: 22px 20px 18px;
           }
 
+          .packing-card-header,
+          .packing-header-actions {
+            gap: 8px;
+          }
+
           .packing-item {
+            padding-left: 18px;
+            padding-right: 14px;
+          }
+
+          .packing-category-heading {
             padding-left: 18px;
             padding-right: 14px;
           }
@@ -650,8 +1150,43 @@ function Packing() {
             opacity: 1;
           }
 
+          .packing-header-actions {
+            width: 100%;
+          }
+
+          .group-toggle {
+            width: 100%;
+          }
+
           .packing-form-card {
             padding: 22px;
+          }
+
+          .check-list {
+            max-height: 240px;
+          }
+
+          .check-list::-webkit-scrollbar {
+            width: 8px;
+          }
+
+          .packing-modal-backdrop {
+            padding: 14px;
+          }
+
+          .packing-modal-header,
+          .packing-modal-form {
+            padding-left: 18px;
+            padding-right: 18px;
+          }
+
+          .packing-modal-foot {
+            flex-direction: column;
+          }
+
+          .packing-modal-foot .button,
+          .ghost-button {
+            width: 100%;
           }
         }
       `}</style>

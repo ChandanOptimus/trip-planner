@@ -2,14 +2,10 @@
 
 import { useTrip } from "./trip-provider";
 
-export function PageState({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function PageState({ children }: { children: React.ReactNode }) {
   const { loading, data, error, refresh } = useTrip();
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="state-card state-loading">
         <div className="state-loading-mark">
@@ -33,14 +29,9 @@ export function PageState({
     return (
       <div className="state-card">
         <b>Couldn’t connect to Google Sheets.</b>
-        <p>
-          {error || "The planner could not load your trip data."}
-        </p>
+        <p>{error || "The planner could not load your trip data."}</p>
 
-        <button
-          className="button"
-          onClick={() => void refresh()}
-        >
+        <button className="button" onClick={() => void refresh()}>
           Try again
         </button>
       </div>
