@@ -2129,6 +2129,7 @@ footer {
   width: 100%;
   overflow: visible;
   border-radius: 14px;
+  filter: drop-shadow(0 18px 36px rgba(0, 0, 0, 0.18));
 }
 
 .itinerary-map {
@@ -2147,8 +2148,8 @@ footer {
   grid-template-columns: repeat(3, 1fr);
   width: 100%;
   min-height: 82px;
-  background: #111318;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, #111c1d, #111318);
+  border: 1px solid rgba(45, 212, 191, 0.18);
   border-top: 0;
   border-radius: 0 0 14px 14px;
   overflow: hidden;
@@ -2159,7 +2160,7 @@ footer {
   flex-direction: column;
   justify-content: center;
   padding: 16px 20px;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid rgba(45, 212, 191, 0.12);
 }
 
 .itinerary-map-stat:last-child {
@@ -2173,7 +2174,7 @@ footer {
   line-height: 1.2;
   font-weight: 700;
   letter-spacing: 0.12em;
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(153, 246, 228, 0.62);
 }
 
 .itinerary-map-stat strong {
@@ -2181,7 +2182,15 @@ footer {
   font-size: 19px;
   line-height: 1.2;
   font-weight: 700;
-  color: #fff;
+  color: #e6fffb;
+}
+
+.itinerary-route-line {
+  filter: drop-shadow(0 0 4px rgba(45, 212, 191, 0.5));
+}
+
+.itinerary-stop-route-line {
+  filter: drop-shadow(0 0 5px rgba(192, 132, 252, 0.58));
 }
 
 .itinerary-map-status {
@@ -2191,9 +2200,9 @@ footer {
   z-index: 1000;
   padding: 8px 12px;
   border-radius: 8px;
-  background: rgba(17, 19, 24, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.8);
+  background: rgba(11, 29, 29, 0.94);
+  border: 1px solid rgba(45, 212, 191, 0.28);
+  color: #d5fffa;
   font-size: 12px;
   font-weight: 600;
   backdrop-filter: blur(8px);
@@ -2257,8 +2266,8 @@ footer {
   justify-content: space-between;
   gap: 24px;
   padding: 18px 22px;
-  background: #111318;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, #142323, #111318);
+  border: 1px solid rgba(45, 212, 191, 0.2);
   border-bottom: 0;
   border-radius: 14px 14px 0 0;
 }
@@ -2274,7 +2283,7 @@ footer {
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.12em;
-  color: #f97316;
+  color: #5eead4;
   text-transform: uppercase;
 }
 
@@ -2313,16 +2322,16 @@ footer {
   width: 9px;
   height: 9px;
   flex: 0 0 9px;
-  border: 2px solid #f97316;
+  border: 2px solid #2dd4bf;
   border-radius: 50%;
 }
 
 .map-day-route-dot.destination {
-  background: #f97316;
+  background: #2dd4bf;
 }
 
 .map-day-route-arrow {
-  color: rgba(255, 255, 255, 0.35);
+  color: rgba(153, 246, 228, 0.62);
   font-size: 20px;
   line-height: 1;
 }
@@ -2397,8 +2406,8 @@ footer {
 }
 
 .map-route-toolbar button.active {
-  background: rgba(249, 115, 22, 0.1);
-  border-color: rgba(249, 115, 22, 0.65);
+  background: rgba(45, 212, 191, 0.12);
+  border-color: rgba(45, 212, 191, 0.65);
   color: #fff;
 }
 
@@ -2414,7 +2423,7 @@ footer {
 }
 
 .map-route-toolbar button.active .map-day-button-title {
-  color: #f97316;
+  color: #5eead4;
 }
 
 .map-day-button-route {
@@ -3119,4 +3128,13 @@ body {
   .sidebar {
     display: none;
   }
+}
+
+.roadbook-map-marker-fuel .roadbook-map-marker-inner,
+.roadbook-map-marker-food .roadbook-map-marker-inner,
+.roadbook-map-marker-sightseeing .roadbook-map-marker-inner,
+.roadbook-map-marker-stay .roadbook-map-marker-inner {
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.38),
+    0 0 0 3px rgba(45, 212, 191, 0.12);
 }

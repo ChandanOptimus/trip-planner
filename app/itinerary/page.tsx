@@ -24,6 +24,7 @@ type GeocodeCache = Record<string, GeocodedLocation>;
 type MapStop = {
   id: string;
   day: string;
+  sortOrder: string;
   type: RoadbookStop["type"];
   location: string;
   notes: string;
@@ -64,55 +65,65 @@ function Itinerary() {
   const [geocodedStops, setGeocodedStops] = useState<GeocodeCache>({});
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState("");
-  const [destinationSuggestions, setDestinationSuggestions] = useState<GeocodedLocation[]>([]);
-  const [destinationSearchBusy, setDestinationSearchBusy] = useState(false);
+  const [locationSuggestions, setLocationSuggestions] = useState<GeocodedLocation[]>([]);
+  const [locationSearchBusy, setLocationSearchBusy] = useState(false);
+  const [locationSearchField, setLocationSearchField] = useState<
+    "from" | "to" | "stop" | null
+  >(null);
   const selectedDestinationRef = useRef("");
   const [activeMapDay, setActiveMapDay] = useState<string | null>(null);
   const [geocodedRoadbookStops, setGeocodedRoadbookStops] = useState<MapStop[]>(
     [],
   );
   useEffect(() => {
-    const query = draft.to.trim();
+    const query = locationSearchField === "stop"
+      ? stopDraft.location.trim()
+      : locationSearchField
+        ? draft[locationSearchField].trim()
+        : "";
 
-    if (mode !== "add" && mode !== "edit") {
-      setDestinationSuggestions([]);
+    if (
+      (mode !== "add" && mode !== "edit" && !selected && !selectedStop) ||
+      !locationSearchField
+    ) {
+      setLocationSuggestions([]);
       return;
     }
 
     if (selectedDestinationRef.current === query) {
       selectedDestinationRef.current = "";
-      setDestinationSuggestions([]);
+      setLocationSuggestions([]);
       return;
     }
 
     if (query.length < 2) {
-      setDestinationSuggestions([]);
+      setLocationSuggestions([]);
       return;
     }
 
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       try {
-        setDestinationSearchBusy(true);
+        setLocationSearchBusy(true);
         const response = await fetch(
           `/api/geocode?q=${encodeURIComponent(query)}`,
           { signal: controller.signal },
         );
 
         if (!response.ok) {
-          setDestinationSuggestions([]);
+          setLocationSuggestions([]);
           return;
         }
 
         const result = (await response.json()) as GeocodeResponse;
-        setDestinationSuggestions(result.results.slice(0, 3));
+        setLocationSuggestions(result.results.slice(0, 3));
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
-          setDestinationSuggestions([]);
+          setLocationSuggestions([]);
         }
       } finally {
         if (!controller.signal.aborted) {
-          setDestinationSearchBusy(false);
+          setLocationSearchBusy(false);
         }
       }
     }, 350);
@@ -121,7 +132,14 @@ function Itinerary() {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [draft.to, mode]);
+  }, [
+    draft,
+    locationSearchField,
+    mode,
+    selected,
+    selectedStop,
+    stopDraft.location,
+  ]);
   useEffect(() => {
     const date =
       data?.itinerary.find((item) => item.date)?.date || data?.trip.startDate;
@@ -147,9 +165,15 @@ function Itinerary() {
   const byDate = new Map(
     data.itinerary.filter((item) => item.date).map((item) => [item.date, item]),
   );
-  const route = [...data.itinerary].sort(
-    (a, b) => Number(a.sortOrder || a.day) - Number(b.sortOrder || b.day),
-  );
+  const route = [...data.itinerary].sort((a, b) => {
+    const dayDifference = Number(a.day) - Number(b.day);
+
+    if (dayDifference !== 0) {
+      return dayDifference;
+    }
+
+    return Number(a.sortOrder || 0) - Number(b.sortOrder || 0);
+  });
   const mapLegs = route
     .map((item) => {
       const from = geocodedStops[item.from.trim().toLowerCase()];
@@ -519,6 +543,7 @@ function Itinerary() {
           results.push({
             id: stop.id,
             day: stop.day,
+            sortOrder: stop.sortOrder,
             type: stop.type,
             location: stop.location,
             notes: stop.notes,
@@ -1716,17 +1741,54 @@ function Itinerary() {
 
                       <label>
                         Location
-                        <input
-                          required
-                          placeholder="e.g. Amboli"
-                          value={stopDraft.location}
-                          onChange={(event) =>
-                            setStopDraft({
-                              ...stopDraft,
-                              location: event.target.value,
-                            })
-                          }
-                        />
+                        <div className="destination-search">
+                          <input
+                            required
+                            placeholder="e.g. Amboli"
+                            value={stopDraft.location}
+                            autoComplete="off"
+                            onFocus={() => setLocationSearchField("stop")}
+                            onChange={(event) => {
+                              selectedDestinationRef.current = "";
+                              setLocationSearchField("stop");
+                              setStopDraft({
+                                ...stopDraft,
+                                location: event.target.value,
+                              });
+                            }}
+                          />
+                          {(locationSearchField === "stop" &&
+                            (locationSearchBusy || locationSuggestions.length > 0)) && (
+                            <div className="destination-suggestions" role="listbox">
+                              {locationSearchBusy && (
+                                <span className="destination-search-status">Searching…</span>
+                              )}
+                              {locationSuggestions.map((suggestion) => (
+                                <button
+                                  type="button"
+                                  key={`${suggestion.latitude}-${suggestion.longitude}`}
+                                  role="option"
+                                  onMouseDown={(event) => {
+                                    event.preventDefault();
+                                    const key = suggestion.displayName.trim().toLowerCase();
+                                    selectedDestinationRef.current = suggestion.displayName;
+                                    setStopDraft({
+                                      ...stopDraft,
+                                      location: suggestion.displayName,
+                                    });
+                                    setGeocodedStops((current) => ({
+                                      ...current,
+                                      [key]: suggestion,
+                                    }));
+                                    setLocationSuggestions([]);
+                                  }}
+                                >
+                                  {suggestion.displayName}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </label>
 
                       <label className="wide">
@@ -1804,13 +1866,47 @@ function Itinerary() {
                   </label>
                   <label>
                     From
-                    <input
-                      required
-                      value={draft.from}
-                      onChange={(e) =>
-                        setDraft({ ...draft, from: e.target.value })
-                      }
-                    />
+                    <div className="destination-search">
+                      <input
+                        required
+                        value={draft.from}
+                        autoComplete="off"
+                        onFocus={() => setLocationSearchField("from")}
+                        onChange={(e) => {
+                          selectedDestinationRef.current = "";
+                          setLocationSearchField("from");
+                          setDraft({ ...draft, from: e.target.value });
+                        }}
+                      />
+                      {(locationSearchField === "from" &&
+                        (locationSearchBusy || locationSuggestions.length > 0)) && (
+                        <div className="destination-suggestions" role="listbox">
+                          {locationSearchBusy && (
+                            <span className="destination-search-status">Searching…</span>
+                          )}
+                          {locationSuggestions.map((suggestion) => (
+                            <button
+                              type="button"
+                              key={`${suggestion.latitude}-${suggestion.longitude}`}
+                              role="option"
+                              onMouseDown={(event) => {
+                                event.preventDefault();
+                                const key = suggestion.displayName.trim().toLowerCase();
+                                selectedDestinationRef.current = suggestion.displayName;
+                                setDraft({ ...draft, from: suggestion.displayName });
+                                setGeocodedStops((current) => ({
+                                  ...current,
+                                  [key]: suggestion,
+                                }));
+                                setLocationSuggestions([]);
+                              }}
+                            >
+                              {suggestion.displayName}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </label>
                   <label>
                     To
@@ -1819,17 +1915,20 @@ function Itinerary() {
                         required
                         value={draft.to}
                         autoComplete="off"
+                        onFocus={() => setLocationSearchField("to")}
                         onChange={(e) => {
                           selectedDestinationRef.current = "";
+                          setLocationSearchField("to");
                           setDraft({ ...draft, to: e.target.value });
                         }}
                       />
-                      {(destinationSearchBusy || destinationSuggestions.length > 0) && (
+                      {(locationSearchField === "to" &&
+                        (locationSearchBusy || locationSuggestions.length > 0)) && (
                         <div className="destination-suggestions" role="listbox">
-                          {destinationSearchBusy && (
+                          {locationSearchBusy && (
                             <span className="destination-search-status">Searching…</span>
                           )}
-                          {destinationSuggestions.map((suggestion) => (
+                          {locationSuggestions.map((suggestion) => (
                             <button
                               type="button"
                               key={`${suggestion.latitude}-${suggestion.longitude}`}
@@ -1843,7 +1942,7 @@ function Itinerary() {
                                   ...current,
                                   [key]: suggestion,
                                 }));
-                                setDestinationSuggestions([]);
+                                setLocationSuggestions([]);
                               }}
                             >
                               {suggestion.displayName}

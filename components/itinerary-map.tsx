@@ -24,6 +24,7 @@ type MapLeg = {
 type MapStop = {
   id: string;
   day: string;
+  sortOrder: string;
   type: "fuel" | "food" | "sightseeing" | "stay";
   location: string;
   notes: string;
@@ -34,6 +35,13 @@ type RouteResult = {
   coordinates: [number, number][];
   distanceKm: number;
   durationMinutes: number;
+  segments: RouteSegment[];
+};
+type RouteSegment = {
+  coordinates: [number, number][];
+  distanceKm: number;
+  durationMinutes: number;
+  includesRoadbookStop: boolean;
 };
 
 type Props = {
@@ -111,38 +119,91 @@ function MapController({
   return null;
 }
 
-async function fetchRoute(legs: MapLeg[]): Promise<RouteResult | null> {
+async function fetchRoute(
+  legs: MapLeg[],
+  roadbookStops: MapStop[],
+): Promise<RouteResult | null> {
   if (!legs.length) return null;
 
-  const stops: { latitude: number; longitude: number }[] = [];
+  const routeStops: {
+    latitude: number;
+    longitude: number;
+    isRoadbookStop: boolean;
+  }[] = [];
+  const insertedStopDays = new Set<string>();
 
   legs.forEach((leg, index) => {
     if (index === 0) {
-      stops.push({
+      routeStops.push({
         latitude: leg.fromLatitude,
         longitude: leg.fromLongitude,
+        isRoadbookStop: false,
       });
     }
 
-    stops.push({
+    if (!insertedStopDays.has(leg.day)) {
+      roadbookStops
+        .filter((stop) => stop.day === leg.day)
+        .sort(
+          (a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0),
+        )
+        .forEach((stop) => {
+          routeStops.push({
+            latitude: stop.latitude,
+            longitude: stop.longitude,
+            isRoadbookStop: true,
+          });
+        });
+      insertedStopDays.add(leg.day);
+    }
+
+    routeStops.push({
       latitude: leg.toLatitude,
       longitude: leg.toLongitude,
+      isRoadbookStop: false,
     });
   });
 
-  const response = await fetch("/api/route", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ stops }),
-  });
+  const segments: RouteSegment[] = [];
 
-  if (!response.ok) {
-    throw new Error("Unable to calculate route");
+  for (let index = 0; index < routeStops.length - 1; index += 1) {
+    const start = routeStops[index];
+    const end = routeStops[index + 1];
+    const response = await fetch("/api/route", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        stops: [
+          { latitude: start.latitude, longitude: start.longitude },
+          { latitude: end.latitude, longitude: end.longitude },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Unable to calculate route");
+    }
+
+    const result = (await response.json()) as Omit<RouteResult, "segments">;
+    segments.push({
+      ...result,
+      includesRoadbookStop: start.isRoadbookStop || end.isRoadbookStop,
+    });
   }
 
-  return response.json();
+  return {
+    coordinates: segments.flatMap((segment, index) =>
+      index === 0 ? segment.coordinates : segment.coordinates.slice(1),
+    ),
+    distanceKm: segments.reduce((sum, segment) => sum + segment.distanceKm, 0),
+    durationMinutes: segments.reduce(
+      (sum, segment) => sum + segment.durationMinutes,
+      0,
+    ),
+    segments,
+  };
 }
 
 export default function ItineraryMap({ legs, stops, activeDay }: Props) {
@@ -156,6 +217,11 @@ export default function ItineraryMap({ legs, stops, activeDay }: Props) {
 
     return legs.filter((leg) => leg.day === activeDay);
   }, [legs, activeDay]);
+  const selectedStops = useMemo(() => {
+    if (!activeDay) return stops;
+
+    return stops.filter((stop) => stop.day === activeDay);
+  }, [stops, activeDay]);
 
   /*
    * Full trip route
@@ -173,7 +239,7 @@ export default function ItineraryMap({ legs, stops, activeDay }: Props) {
         setLoading(true);
         setError("");
 
-        const result = await fetchRoute(legs);
+        const result = await fetchRoute(legs, stops);
 
         if (!cancelled) {
           setFullRoute(result);
@@ -197,7 +263,7 @@ export default function ItineraryMap({ legs, stops, activeDay }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [legs]);
+  }, [legs, stops]);
 
   /*
    * Selected day route
@@ -224,7 +290,7 @@ export default function ItineraryMap({ legs, stops, activeDay }: Props) {
         setLoading(true);
         setError("");
 
-        const result = await fetchRoute(selectedLegs);
+        const result = await fetchRoute(selectedLegs, selectedStops);
 
         if (!cancelled) {
           setActiveRoute(result);
@@ -248,16 +314,12 @@ export default function ItineraryMap({ legs, stops, activeDay }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [activeDay, selectedLegs]);
+  }, [activeDay, selectedLegs, selectedStops]);
 
   const displayedRoute = activeDay ? activeRoute : fullRoute;
 
   const displayedLegs = activeDay ? selectedLegs : legs;
-  const displayedStops = useMemo(() => {
-    if (!activeDay) return stops;
-
-    return stops.filter((stop) => stop.day === activeDay);
-  }, [stops, activeDay]);
+  const displayedStops = selectedStops;
   const markerPoints = useMemo(() => {
     if (activeDay) {
       if (!selectedLegs.length) return [];
@@ -404,16 +466,30 @@ export default function ItineraryMap({ legs, stops, activeDay }: Props) {
             </Popup>
           </Marker>
         ))}
-        {routeCoordinates.length > 1 && (
-          <Polyline
-            positions={routeCoordinates}
-            pathOptions={{
-              color: "#f97316",
-              weight: 5,
-              opacity: 0.9,
-            }}
-          />
-        )}
+        {displayedRoute?.segments.map((segment, index) => {
+          const positions = segment.coordinates.map(
+            ([longitude, latitude]) => [latitude, longitude] as [number, number],
+          );
+
+          return positions.length > 1 ? (
+            <Polyline
+              key={`route-segment-${index}`}
+              className={
+                segment.includesRoadbookStop
+                  ? "itinerary-route-line itinerary-stop-route-line"
+                  : "itinerary-route-line"
+              }
+              positions={positions}
+              pathOptions={{
+                color: segment.includesRoadbookStop ? "#c084fc" : "#2dd4bf",
+                weight: segment.includesRoadbookStop ? 5 : 4.5,
+                opacity: 0.92,
+                lineCap: "round",
+                lineJoin: "round",
+              }}
+            />
+          ) : null;
+        })}
 
         <MapController
           legs={displayedLegs}
