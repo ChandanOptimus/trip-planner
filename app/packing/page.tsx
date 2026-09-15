@@ -23,13 +23,19 @@ function Packing() {
   const { data, save } = useTrip();
 
   const [label, setLabel] = useState("");
-  const [category, setCategory] = useState(defaultCategory);
+  const [category, setCategory] =
+    useState<(typeof packingCategories)[number]>(defaultCategory);
   const [groupByCategory, setGroupByCategory] = useState(false);
-  const [editingItem, setEditingItem] = useState<
-    (typeof data.packing)[number] | null
-  >(null);
+  const [editingItem, setEditingItem] = useState<{
+    id: string;
+    label: string;
+    category: string;
+    packed: string;
+    sortOrder: string;
+  } | null>(null);
   const [editingLabel, setEditingLabel] = useState("");
-  const [editingCategory, setEditingCategory] = useState(defaultCategory);
+  const [editingCategory, setEditingCategory] =
+    useState<(typeof packingCategories)[number]>(defaultCategory);
 
   if (!data) return null;
 
@@ -89,10 +95,22 @@ function Packing() {
     }
   };
 
-  const edit = (item: (typeof data.packing)[number]) => {
+  const edit = (item: {
+    id: string;
+    label: string;
+    category: string;
+    packed: string;
+    sortOrder: string;
+  }) => {
     setEditingItem(item);
     setEditingLabel(item.label);
-    setEditingCategory(item.category || defaultCategory);
+    setEditingCategory(
+      packingCategories.includes(
+        item.category as (typeof packingCategories)[number],
+      )
+        ? (item.category as (typeof packingCategories)[number])
+        : defaultCategory,
+    );
   };
 
   const closeEditor = () => {
@@ -354,7 +372,11 @@ function Packing() {
               Category
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                onChange={(e) =>
+                  setCategory(
+                    e.target.value as (typeof packingCategories)[number],
+                  )
+                }
               >
                 {packingCategories.map((option) => (
                   <option key={option} value={option}>
@@ -409,7 +431,11 @@ function Packing() {
                 Category
                 <select
                   value={editingCategory}
-                  onChange={(e) => setEditingCategory(e.target.value)}
+                  onChange={(e) =>
+                    setEditingCategory(
+                      e.target.value as (typeof packingCategories)[number],
+                    )
+                  }
                 >
                   {packingCategories.map((option) => (
                     <option key={option} value={option}>
