@@ -167,6 +167,25 @@ function Itinerary() {
     setDraft(item);
     setMode("view");
   };
+  const submitRide = async (event: FormEvent) => {
+  event.preventDefault();
+
+  setBusy(true);
+
+  const ok = await save(
+    "itinerary",
+    mode === "edit" && selected ? "PATCH" : "POST",
+    mode === "edit" && selected
+      ? { ...draft, id: selected.id }
+      : draft,
+  );
+
+  setBusy(false);
+
+  if (ok) {
+    close();
+  }
+};
   const submitStop = async (event: FormEvent) => {
     event.preventDefault();
 
@@ -1665,7 +1684,7 @@ function Itinerary() {
                   {mode === "add" ? "NEW RIDE DAY" : "UPDATE ROUTE"}
                 </p>
                 <h2>{mode === "add" ? "Add ride day" : "Edit ride day"}</h2>
-                <form onSubmit={submitStop} className="data-form">
+                <form onSubmit={submitRide} className="data-form">
                   <label>
                     Trip day
                     <input
