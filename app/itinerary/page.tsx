@@ -44,6 +44,7 @@ const blank = {
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const isoDate = (year: number, month: number, day: number) =>
   `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+const shortLocation = (value: string) => value.split(",")[0]?.trim() || value;
 
 function Itinerary() {
   const { data, save } = useTrip();
@@ -56,6 +57,7 @@ function Itinerary() {
   const [stopBusy, setStopBusy] = useState(false);
 
   const [selectedStop, setSelectedStop] = useState<RoadbookStop | null>(null);
+  const [draggedStopId, setDraggedStopId] = useState<string | null>(null);
 
   const [stopDraft, setStopDraft] = useState({
     type: "fuel" as RoadbookStop["type"],
@@ -63,6 +65,7 @@ function Itinerary() {
     notes: "",
   });
   const [geocodedStops, setGeocodedStops] = useState<GeocodeCache>({});
+  const geocodedStopsRef = useRef<GeocodeCache>({});
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState("");
   const [locationSuggestions, setLocationSuggestions] = useState<GeocodedLocation[]>([]);
@@ -365,6 +368,44 @@ function Itinerary() {
       });
     }
   };
+
+  const reorderStops = async (
+    dayStops: RoadbookStop[],
+    draggedId: string,
+    targetId: string,
+  ) => {
+    if (draggedId === targetId) return;
+
+    const fromIndex = dayStops.findIndex((stop) => stop.id === draggedId);
+    const toIndex = dayStops.findIndex((stop) => stop.id === targetId);
+
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    const reordered = [...dayStops];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+
+    setStopBusy(true);
+
+    for (let index = 0; index < reordered.length; index += 1) {
+      const stop = reordered[index];
+      const sortOrder = String(index + 1);
+
+      if (stop.sortOrder === sortOrder) continue;
+
+      await save("stops", "PATCH", {
+        id: stop.id,
+        day: stop.day,
+        type: stop.type,
+        location: stop.location,
+        notes: stop.notes,
+        sortOrder,
+      });
+    }
+
+    setStopBusy(false);
+  };
+
   const stops = route
     .flatMap((item, index) => (index === 0 ? [item.from, item.to] : [item.to]))
     .filter(Boolean);
@@ -394,7 +435,7 @@ function Itinerary() {
 
     if (!key) return null;
 
-    const cached = geocodedStops[key];
+    const cached = geocodedStopsRef.current[key];
 
     if (cached) {
       return cached;
@@ -413,6 +454,11 @@ function Itinerary() {
       const result = payload.results[0];
 
       if (!result) return null;
+
+      geocodedStopsRef.current = {
+        ...geocodedStopsRef.current,
+        [key]: result,
+      };
 
       setGeocodedStops((current) => ({
         ...current,
@@ -453,8 +499,8 @@ function Itinerary() {
 
         const key = stop.toLowerCase();
 
-        if (geocodedStops[key]) {
-          results[key] = geocodedStops[key];
+        if (geocodedStopsRef.current[key]) {
+          results[key] = geocodedStopsRef.current[key];
           continue;
         }
 
@@ -513,6 +559,11 @@ function Itinerary() {
       to: dayItems[dayItems.length - 1]?.to ?? "",
     };
   });
+  const selectedDayStops = selected
+    ? data.stops
+        .filter((stop) => stop.day === selected.day)
+        .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0))
+    : [];
   useEffect(() => {
     if (!data?.stops?.length) {
       setGeocodedRoadbookStops([]);
@@ -531,7 +582,8 @@ function Itinerary() {
 
         if (!key) continue;
 
-        let coordinates: GeocodedLocation | null = geocodedStops[key] ?? null;
+        let coordinates: GeocodedLocation | null =
+          geocodedStopsRef.current[key] ?? null;
 
         if (!coordinates) {
           coordinates = await geocodeStop(stop.location);
@@ -563,7 +615,7 @@ function Itinerary() {
     return () => {
       cancelled = true;
     };
-  }, [data?.stops, geocodedStops]);
+  }, [data?.stops]);
   return (
     <div className="itinerary-page">
       <style jsx global>{`
@@ -1211,11 +1263,24 @@ function Itinerary() {
 
         .ride-stop-item {
           display: grid;
-          grid-template-columns: auto minmax(0, 1fr);
+          grid-template-columns: auto auto minmax(0, 1fr);
           align-items: start;
           gap: 11px;
           padding: 10px 0;
           border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+          cursor: grab;
+        }
+
+        .ride-stop-item.dragging {
+          opacity: 0.4;
+        }
+
+        .ride-stop-handle {
+          padding-top: 3px;
+          color: var(--rb-muted);
+          font-size: 13px;
+          line-height: 1;
+          user-select: none;
         }
 
         .ride-stop-item strong {
@@ -1479,8 +1544,13 @@ function Itinerary() {
                   {byDate.has(cell.date) ? (
                     <span>
                       <i>DAY {byDate.get(cell.date)?.day}</i>
-                      {byDate.get(cell.date)?.from || "Start"} <em>→</em>{" "}
-                      {byDate.get(cell.date)?.to || "Destination"}
+                      {byDate.get(cell.date)?.from
+                        ? shortLocation(byDate.get(cell.date)!.from)
+                        : "Start"}{" "}
+                      <em>→</em>{" "}
+                      {byDate.get(cell.date)?.to
+                        ? shortLocation(byDate.get(cell.date)!.to)
+                        : "Destination"}
                     </span>
                   ) : (
                     <small>+ Add ride</small>
@@ -1517,7 +1587,10 @@ function Itinerary() {
                 >
                   <span className="map-day-button-title">FULL TRIP</span>
                   <span className="map-day-button-route">
-                    {route[0]?.from} → {route[route.length - 1]?.to}
+                    {route[0] ? shortLocation(route[0].from) : ""} →{" "}
+                    {route[route.length - 1]
+                      ? shortLocation(route[route.length - 1].to)
+                      : ""}
                   </span>
                 </button>
                 {mapDays.map((dayInfo) => (
@@ -1530,7 +1603,7 @@ function Itinerary() {
                     <span className="map-day-button-title">{dayInfo.day}</span>
 
                     <span className="map-day-button-route">
-                      {dayInfo.from} → {dayInfo.to}
+                      {shortLocation(dayInfo.from)} → {shortLocation(dayInfo.to)}
                     </span>
                   </button>
                 ))}
@@ -1566,7 +1639,7 @@ function Itinerary() {
 
                     <div>
                       <b>
-                        {item.from} → {item.to}
+                        {shortLocation(item.from)} → {shortLocation(item.to)}
                       </b>
 
                       <small>
@@ -1624,7 +1697,8 @@ function Itinerary() {
                     : "DATE TBD"}
                 </p>
                 <h2>
-                  {selected.from} <span>→</span> {selected.to}
+                  {shortLocation(selected.from)}{" "}
+                  <span>→</span> {shortLocation(selected.to)}
                 </h2>
                 <div className="ride-meta">
                   <span>{selected.distanceKm || "—"} km</span>
@@ -1638,59 +1712,69 @@ function Itinerary() {
                     <div>
                       <span className="eyebrow">ROAD STOPS</span>
                       <h3>
-                        {data.stops.filter((stop) => stop.day === selected.day)
-                          .length
+                        {selectedDayStops.length
                           ? "Stops on this day"
                           : "No stops yet"}
                       </h3>
                     </div>
 
                     <span className="ride-stop-count">
-                      {
-                        data.stops.filter((stop) => stop.day === selected.day)
-                          .length
-                      }
+                      {selectedDayStops.length}
                     </span>
                   </div>
 
-                  {data.stops
-                    .filter((stop) => stop.day === selected.day)
-                    .sort(
-                      (a, b) =>
-                        Number(a.sortOrder || 0) - Number(b.sortOrder || 0),
-                    )
-                    .map((stop) => (
-                      <div className="ride-stop-item" key={stop.id}>
-                        <span className={`ride-stop-type ${stop.type}`}>
-                          {stop.type}
-                        </span>
+                  {selectedDayStops.map((stop) => (
+                    <div
+                      className={`ride-stop-item${draggedStopId === stop.id ? " dragging" : ""}`}
+                      key={stop.id}
+                      draggable={!stopBusy}
+                      onDragStart={() => setDraggedStopId(stop.id)}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={(event) => {
+                        event.preventDefault();
 
-                        <div className="ride-stop-content">
-                          <strong>{stop.location}</strong>
+                        if (draggedStopId) {
+                          reorderStops(selectedDayStops, draggedStopId, stop.id);
+                        }
 
-                          {stop.notes && <small>{stop.notes}</small>}
+                        setDraggedStopId(null);
+                      }}
+                      onDragEnd={() => setDraggedStopId(null)}
+                    >
+                      <span className="ride-stop-handle" aria-hidden="true">
+                        ⠿
+                      </span>
 
-                          <div className="ride-stop-actions">
-                            <button
-                              type="button"
-                              onClick={() => editStop(stop)}
-                              disabled={stopBusy}
-                            >
-                              Edit
-                            </button>
+                      <span className={`ride-stop-type ${stop.type}`}>
+                        {stop.type}
+                      </span>
 
-                            <button
-                              type="button"
-                              className="stop-delete"
-                              onClick={() => deleteStop(stop)}
-                              disabled={stopBusy}
-                            >
-                              Delete
-                            </button>
-                          </div>
+                      <div className="ride-stop-content">
+                        <strong>{shortLocation(stop.location)}</strong>
+
+                        {stop.notes && <small>{stop.notes}</small>}
+
+                        <div className="ride-stop-actions">
+                          <button
+                            type="button"
+                            onClick={() => editStop(stop)}
+                            disabled={stopBusy}
+                          >
+                            Edit
+                          </button>
+
+                          <button
+                            type="button"
+                            className="stop-delete"
+                            onClick={() => deleteStop(stop)}
+                            disabled={stopBusy}
+                          >
+                            Delete
+                          </button>
                         </div>
                       </div>
-                    ))}
+                    </div>
+                  ))}
 
                   <form
                     className="stop-form"
