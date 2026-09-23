@@ -226,6 +226,9 @@ function Itinerary() {
     setSelected(null);
     setSelectedStop(null);
     setDraft(blank);
+    setLocationSearchField(null);
+    setLocationSuggestions([]);
+    selectedDestinationRef.current = "";
 
     setStopDraft({
       type: "fuel",
@@ -245,11 +248,17 @@ function Itinerary() {
       },
     );
     setMode(item ? "view" : "add");
+    setLocationSearchField(null);
+    setLocationSuggestions([]);
+    selectedDestinationRef.current = "";
   };
   const openItem = (item: ItineraryItem) => {
     setSelected(item);
     setDraft(item);
     setMode("view");
+    setLocationSearchField(null);
+    setLocationSuggestions([]);
+    selectedDestinationRef.current = "";
   };
   const submitRide = async (event: FormEvent) => {
   event.preventDefault();
@@ -308,6 +317,10 @@ function Itinerary() {
       location: stop.location,
       notes: stop.notes,
     });
+
+    setLocationSearchField(null);
+    setLocationSuggestions([]);
+    selectedDestinationRef.current = "";
   };
 
   const submitStopEdit = async (event: FormEvent) => {
