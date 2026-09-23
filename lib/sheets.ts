@@ -71,6 +71,24 @@ function client() {
 function columnLetter(index: number) {
   return String.fromCharCode(64 + index);
 }
+
+async function getSheetId(
+  api: ReturnType<typeof client>,
+  spreadsheetId: string,
+  tabTitle: string,
+) {
+  const meta = await api.spreadsheets.get({
+    spreadsheetId,
+    fields: "sheets.properties",
+  });
+  const sheet = meta.data.sheets?.find(
+    (candidate) => candidate.properties?.title === tabTitle,
+  );
+  const sheetId = sheet?.properties?.sheetId;
+  if (sheetId === undefined || sheetId === null)
+    throw new Error(`Sheet tab "${tabTitle}" not found.`);
+  return sheetId;
+}
 function valuesToRows(
   values: string[][] | null | undefined,
   headers: string[],
@@ -133,10 +151,15 @@ export async function createRow(
   const { spreadsheetId } = configuration();
   const api = client();
   const config = sheetsByCollection[collection];
-  const row = config.headers.map((header) => input[header] ?? "");
-  await api.spreadsheets.values.append({
+  const existing = await api.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${config.tab}'!A:Z`,
+    range: `'${config.tab}'!A:A`,
+  });
+  const nextRow = (existing.data.values?.length ?? 1) + 1;
+  const row = config.headers.map((header) => input[header] ?? "");
+  await api.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${config.tab}'!A${nextRow}:${columnLetter(config.headers.length)}${nextRow}`,
     valueInputOption: "USER_ENTERED",
     requestBody: { values: [row] },
   });
@@ -183,9 +206,23 @@ export async function deleteRow(collection: CollectionName, id: string) {
     (row, index) => index > 0 && String(row[0]) === id,
   );
   if (rowIndex < 0) throw new Error("That item no longer exists in the sheet.");
-  await api.spreadsheets.values.clear({
+  const sheetId = await getSheetId(api, spreadsheetId, config.tab);
+  await api.spreadsheets.batchUpdate({
     spreadsheetId,
-    range: `'${config.tab}'!A${rowIndex + 1}:${columnLetter(config.headers.length)}${rowIndex + 1}`,
+    requestBody: {
+      requests: [
+        {
+          deleteDimension: {
+            range: {
+              sheetId,
+              dimension: "ROWS",
+              startIndex: rowIndex,
+              endIndex: rowIndex + 1,
+            },
+          },
+        },
+      ],
+    },
   });
 }
 

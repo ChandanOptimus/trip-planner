@@ -501,9 +501,14 @@ function Itinerary() {
     }
   };
   useEffect(() => {
+    if (view !== "map") return;
     if (!data?.itinerary.length) return;
 
-    const stops = data.itinerary
+    const relevantItinerary = activeMapDay
+      ? data.itinerary.filter((item) => item.day === activeMapDay)
+      : data.itinerary;
+
+    const stops = relevantItinerary
       .flatMap((item) => [item.from, item.to])
       .map((stop) => stop.trim())
       .filter(Boolean)
@@ -567,7 +572,7 @@ function Itinerary() {
     return () => {
       cancelled = true;
     };
-  }, [data?.itinerary]);
+  }, [data?.itinerary, view, activeMapDay]);
 
   const mapDays = Array.from(
     new Map(
@@ -595,7 +600,18 @@ function Itinerary() {
         .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0))
     : [];
   useEffect(() => {
+    if (view !== "map") return;
+
     if (!data?.stops?.length) {
+      setGeocodedRoadbookStops([]);
+      return;
+    }
+
+    const relevantStops = activeMapDay
+      ? data.stops.filter((stop) => stop.day === activeMapDay)
+      : data.stops;
+
+    if (!relevantStops.length) {
       setGeocodedRoadbookStops([]);
       return;
     }
@@ -605,7 +621,7 @@ function Itinerary() {
     const loadRoadbookStops = async () => {
       const results: MapStop[] = [];
 
-      for (const stop of data.stops) {
+      for (const stop of relevantStops) {
         if (cancelled) return;
 
         const key = stop.location.trim().toLowerCase();
@@ -645,7 +661,7 @@ function Itinerary() {
     return () => {
       cancelled = true;
     };
-  }, [data?.stops]);
+  }, [data?.stops, view, activeMapDay]);
   return (
     <div className="itinerary-page">
       <style jsx global>{`
