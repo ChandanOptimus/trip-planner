@@ -47,7 +47,7 @@ const isoDate = (year: number, month: number, day: number) =>
 const shortLocation = (value: string) => value.split(",")[0]?.trim() || value;
 
 function Itinerary() {
-  const { data, save } = useTrip();
+  const { data, save, refresh } = useTrip();
   const [month, setMonth] = useState(() => new Date());
   const [view, setView] = useState<ViewMode>("calendar");
   const [mode, setMode] = useState<ModalMode>(null);
@@ -163,54 +163,60 @@ function Itinerary() {
     });
   }, [month]);
 
+  const route = useMemo(() => {
+    return [...(data?.itinerary ?? [])].sort((a, b) => {
+      const dayDifference = Number(a.day) - Number(b.day);
+
+      if (dayDifference !== 0) {
+        return dayDifference;
+      }
+
+      return Number(a.sortOrder || 0) - Number(b.sortOrder || 0);
+    });
+  }, [data?.itinerary]);
+
+  const mapLegs = useMemo(() => {
+    return route
+      .map((item) => {
+        const from = geocodedStops[item.from.trim().toLowerCase()];
+        const to = geocodedStops[item.to.trim().toLowerCase()];
+
+        if (!from || !to) {
+          return null;
+        }
+
+        return {
+          id: item.id,
+          day: item.day,
+          from: item.from,
+          to: item.to,
+          fromLatitude: from.latitude,
+          fromLongitude: from.longitude,
+          toLatitude: to.latitude,
+          toLongitude: to.longitude,
+        };
+      })
+      .filter(
+        (
+          leg,
+        ): leg is {
+          id: string;
+          day: string;
+          from: string;
+          to: string;
+          fromLatitude: number;
+          fromLongitude: number;
+          toLatitude: number;
+          toLongitude: number;
+        } => Boolean(leg),
+      );
+  }, [route, geocodedStops]);
+
   if (!data) return null;
 
   const byDate = new Map(
     data.itinerary.filter((item) => item.date).map((item) => [item.date, item]),
   );
-  const route = [...data.itinerary].sort((a, b) => {
-    const dayDifference = Number(a.day) - Number(b.day);
-
-    if (dayDifference !== 0) {
-      return dayDifference;
-    }
-
-    return Number(a.sortOrder || 0) - Number(b.sortOrder || 0);
-  });
-  const mapLegs = route
-    .map((item) => {
-      const from = geocodedStops[item.from.trim().toLowerCase()];
-      const to = geocodedStops[item.to.trim().toLowerCase()];
-
-      if (!from || !to) {
-        return null;
-      }
-
-      return {
-        id: item.id,
-        day: item.day,
-        from: item.from,
-        to: item.to,
-        fromLatitude: from.latitude,
-        fromLongitude: from.longitude,
-        toLatitude: to.latitude,
-        toLongitude: to.longitude,
-      };
-    })
-    .filter(
-      (
-        leg,
-      ): leg is {
-        id: string;
-        day: string;
-        from: string;
-        to: string;
-        fromLatitude: number;
-        fromLongitude: number;
-        toLatitude: number;
-        toLongitude: number;
-      } => Boolean(leg),
-    );
   const monthLabel = month.toLocaleDateString("en-IN", {
     month: "long",
     year: "numeric",
@@ -398,25 +404,36 @@ function Itinerary() {
     const [moved] = reordered.splice(fromIndex, 1);
     reordered.splice(toIndex, 0, moved);
 
+    const changed = reordered
+      .map((stop, index) => ({ stop, sortOrder: String(index + 1) }))
+      .filter(({ stop, sortOrder }) => stop.sortOrder !== sortOrder);
+
+    if (!changed.length) return;
+
     setStopBusy(true);
 
-    for (let index = 0; index < reordered.length; index += 1) {
-      const stop = reordered[index];
-      const sortOrder = String(index + 1);
+    try {
+      await Promise.all(
+        changed.map(({ stop, sortOrder }) =>
+          fetch("/api/stops", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: stop.id,
+              day: stop.day,
+              type: stop.type,
+              location: stop.location,
+              notes: stop.notes,
+              sortOrder,
+            }),
+          }),
+        ),
+      );
 
-      if (stop.sortOrder === sortOrder) continue;
-
-      await save("stops", "PATCH", {
-        id: stop.id,
-        day: stop.day,
-        type: stop.type,
-        location: stop.location,
-        notes: stop.notes,
-        sortOrder,
-      });
+      await refresh({ showLoading: false });
+    } finally {
+      setStopBusy(false);
     }
-
-    setStopBusy(false);
   };
 
   const stops = route
