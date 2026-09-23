@@ -49,7 +49,24 @@ type Props = {
   stops: MapStop[];
   activeDay: string | null;
 };
-function createMapIcon(type: MapStopType, number?: number) {
+function coordinateKey(latitude: number, longitude: number) {
+  return `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
+}
+
+function clusterSizeByCoordinate<
+  T extends { latitude: number; longitude: number },
+>(points: T[]) {
+  const counts = new Map<string, number>();
+
+  points.forEach((point) => {
+    const key = coordinateKey(point.latitude, point.longitude);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  });
+
+  return counts;
+}
+
+function createMapIcon(type: MapStopType, number?: number, clusterSize?: number) {
   const icons: Record<MapStopType, string> = {
     start:
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.8 5.7L21 9.6l-4.5 4.4 1.1 6.3L12 17.3l-5.6 3 1.1-6.3L3 9.6l6.2-.9L12 3z"/></svg>',
@@ -63,13 +80,15 @@ function createMapIcon(type: MapStopType, number?: number) {
 
   const label = icons[type];
   const hasNumber = typeof number === "number";
+  const isClustered = (clusterSize ?? 0) > 1;
 
   return L.divIcon({
-    className: `roadbook-map-marker roadbook-map-marker-${type}${hasNumber ? " has-number" : ""}`,
+    className: `roadbook-map-marker roadbook-map-marker-${type}${hasNumber ? " has-number" : ""}${isClustered ? " has-cluster" : ""}`,
     html: `
       <div class="roadbook-map-marker-inner">
         ${hasNumber ? `<span class="roadbook-marker-number">${number}</span>` : `<span class="roadbook-marker-glyph">${label}</span>`}
       </div>
+      ${isClustered ? `<span class="roadbook-marker-cluster-badge">${clusterSize}</span>` : ""}
     `,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
@@ -397,6 +416,15 @@ export default function ItineraryMap({ legs, stops, activeDay }: Props) {
       ([longitude, latitude]) => [latitude, longitude] as [number, number],
     ) ?? [];
 
+  const markerClusters = useMemo(
+    () => clusterSizeByCoordinate(markerPoints),
+    [markerPoints],
+  );
+  const stopClusters = useMemo(
+    () => clusterSizeByCoordinate(displayedStops),
+    [displayedStops],
+  );
+
   return (
     <div className="itinerary-map-shell">
       {activeDay && selectedLegs.length > 0 && (
@@ -445,7 +473,11 @@ export default function ItineraryMap({ legs, stops, activeDay }: Props) {
           <Marker
             key={point.id}
             position={[point.latitude, point.longitude]}
-            icon={createMapIcon(point.type, point.number)}
+            icon={createMapIcon(
+              point.type,
+              point.number,
+              markerClusters.get(coordinateKey(point.latitude, point.longitude)),
+            )}
           >
             <Popup>
               <strong>{point.label}</strong>
@@ -456,7 +488,11 @@ export default function ItineraryMap({ legs, stops, activeDay }: Props) {
           <Marker
             key={`stop-${stop.id}`}
             position={[stop.latitude, stop.longitude]}
-            icon={createMapIcon(stop.type)}
+            icon={createMapIcon(
+              stop.type,
+              undefined,
+              stopClusters.get(coordinateKey(stop.latitude, stop.longitude)),
+            )}
           >
             <Popup>
               <strong>{stop.location}</strong>
